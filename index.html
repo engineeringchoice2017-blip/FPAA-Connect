@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>FPAA Connect — Falakata Polytechnic Alumni Association</title>
+  <meta name="description" content="FPAA Connect — the official digital platform of Falakata Polytechnic Alumni Association (ESTD 2024). Connecting the Past. Empowering the Present. Building the Future.">
+  <meta name="theme-color" content="#15365F">
+  <link rel="icon" type="image/png" href="assets/fpaa-icon-192.png">
+  <link rel="apple-touch-icon" href="assets/fpaa-icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="app">
+  <!-- Animated background -->
+  <div class="app-bg" aria-hidden="true">
+    <div class="grid-lines"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <div class="app-shell">
+    <!-- ================= SIDEBAR NAVIGATION ================= -->
+    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
+      <a class="sb-brand" href="#home" aria-label="FPAA Connect home">
+        <img src="assets/fpaa-logo.png" alt="FPAA emblem" data-logo>
+        <div>
+          <div class="t1">FPAA Connect</div>
+          <div class="t2">Falakata Polytechnic<br>Alumni Association</div>
+        </div>
+      </a>
+      <nav class="sb-nav" id="sbNav"></nav>
+      <div class="sb-foot">
+        <span class="mode" id="modeBadge">Demo mode</span>
+        <div style="margin-top:8px">ESTD 2024 · Falakata, West Bengal</div>
+      </div>
+    </aside>
+    <div class="sb-overlay" data-action="nav-close"></div>
+
+    <!-- ================= MAIN ================= -->
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn tb-burger" data-action="nav-toggle" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false" id="burgerBtn"></button>
+        <div class="tb-title">
+          <div class="crumb" id="tbCrumb">FPAA Connect</div>
+          <div class="name" id="tbName">Home</div>
+        </div>
+        <div class="tb-actions" id="tbActions"></div>
+      </header>
+
+      <main class="view" id="view" tabindex="-1" aria-live="polite"></main>
+
+      <footer class="site-footer" id="siteFooter"></footer>
+    </div>
+  </div>
+
+  <!-- Community chat -->
+  <button class="chat-launcher hidden" id="chatLauncher" data-action="chat-open" aria-label="Open community chat"></button>
+  <section class="chat-window" id="chatWindow" aria-label="FPAA community chat" aria-hidden="true"></section>
+
+  <!-- Modal + toast roots -->
+  <div class="modal-root" id="modalRoot" aria-hidden="true">
+    <div class="modal-backdrop" data-action="modal-close"></div>
+    <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"></div>
+  </div>
+  <div class="toast-stack" id="toastStack" aria-live="assertive"></div>
+
+  <noscript><div style="padding:40px;text-align:center">FPAA Connect needs JavaScript enabled.</div></noscript>
+
+  <script src="supabase-config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
