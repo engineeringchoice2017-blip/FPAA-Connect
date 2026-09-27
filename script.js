@@ -1572,12 +1572,23 @@ Views.home = () => {
   const feed = Home.feed();
   const stat = (ic, tone, label, value, sub, d) => h`<div class="glass stat-card card-lift reveal" style="animation-delay:${d}ms"><span class="ico-tile ${tone}">${icon(ic)}</span><div class="sc-body"><div class="sc-label">${label}</div><div class="sc-value">${value}</div><div class="sc-sub">${sub}</div></div></div>`;
   return h`
+  <div class="home-split home-top">
+    <section class="glass card reveal" aria-label="Live gallery">
+      <div class="live-bar"><span class="lb-tag"><span class="live-dot"></span>LIVE UPDATE</span><span class="lb-text" id="liveTicker" style="transition:opacity .25s">FPAA Connect 2.0 Community Updates${feed[0] ? " — " + feed[0].title : ""}</span></div>
+      ${Home.gallery()}
+    </section>
+    <section class="glass card reveal" aria-label="Live feed">
+      <div class="card-head"><div><span class="eyebrow"><span class="live-dot"></span> Live Update</span><h3>Association Feed</h3><p class="sub">Updates, events, notices and announcements</p></div></div>
+      ${Home.feedList(6)}
+    </section>
+  </div>
+
   <section class="home-hero reveal" aria-label="FPAA Connect 2.0">
     <div class="hero-lines"></div><div class="float-ring fr-1"></div><div class="float-ring fr-2"></div><span class="photo-credit">${icon("pin", "ico ico-sm")}Falakata Polytechnic campus</span>
     <div class="hero-main">
       <div class="hero-emblem" id="heroEmblem"><img src="${CONFIG.LOGO_URL}" alt="FPAA emblem — Falakata Polytechnic Alumni Association, ESTD 2024"></div>
       <div class="hero-copy"><span class="eyebrow">${icon("sparkles", "ico ico-sm")} Falakata Polytechnic Alumni Association · ESTD 2024</span>
-        <h1>FPAA <span class="nowrap">CONNECT <span class="ver-badge">2.0</span></span></h1>
+        <h1>FPAA <span class="nowrap"><span class="hero-connect">CONNECT</span> <span class="ver-badge">2.0</span></span></h1>
         <p class="tagline">“Connecting the Past. Empowering the Present. Building the Future.”</p>
         <div class="btn-group">
           <a class="btn btn-gold" href="#membership">${icon("idcard")}Apply for Membership</a>
@@ -1602,16 +1613,6 @@ Views.home = () => {
     ${stat("idcard", "violet", "Membership", `${cats[0]} · ${cats[1]} · ${cats[2]}`, "Alumni · Social Media · Committee", 300)}
   </div>
 
-  <div class="home-split">
-    <section class="glass card reveal" aria-label="Live gallery">
-      <div class="live-bar"><span class="lb-tag"><span class="live-dot"></span>LIVE UPDATE</span><span class="lb-text" id="liveTicker" style="transition:opacity .25s">FPAA Connect 2.0 Community Updates${feed[0] ? " — " + feed[0].title : ""}</span></div>
-      ${Home.gallery()}
-    </section>
-    <section class="glass card reveal" aria-label="Live feed">
-      <div class="card-head"><div><span class="eyebrow"><span class="live-dot"></span> Live Update</span><h3>Association Feed</h3><p class="sub">Updates, events, notices and announcements</p></div></div>
-      ${Home.feedList(8)}
-    </section>
-  </div>
 
   <section class="section">
     <div class="section-head reveal"><div><span class="eyebrow">${icon("pie", "ico ico-sm")} Alumni analytics</span><h2>FPAA at a glance</h2><p>Distribution of registered alumni by passing year, department and current profession.</p></div>

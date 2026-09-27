@@ -1058,3 +1058,19 @@ body.chat-open .chat-window { opacity: 1; visibility: visible; transform: none; 
   box-shadow: 0 .15em .5em rgba(215, 165, 43, .35); text-shadow: none; position: relative; top: -.12em; }
 .sb-brand .t1 { white-space: nowrap; }
 .sb-brand .t1 .ver-badge { font-size: .62em; }
+
+/* ---------- 27 HOME TOP: compact live gallery + live update, yellow CONNECT ---------- */
+.home-split.home-top { width: min(920px, 82%); margin: 0 auto 22px; grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.home-top > .card { padding: 16px; display: flex; flex-direction: column; min-height: 0; }
+.home-top .live-bar { margin-bottom: 10px; padding: 8px 12px; }
+.home-top .gallery-frame { aspect-ratio: 16 / 8; }
+.home-top .card-head { margin-bottom: 10px; }
+.home-top .card-head .sub { display: none; }
+.home-top .feed-list { max-height: none; flex: 1 1 0; min-height: 0; overflow-y: auto; }
+.home-top .feed-item { padding: 10px; }
+.home-top > .card + .card { contain: size; }
+.hero-copy h1 .hero-connect {
+  color: #FFD43B; background: linear-gradient(180deg, #FFE46B 0%, #FFD43B 45%, #F5B400 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  text-shadow: none; filter: drop-shadow(0 4px 18px rgba(255, 212, 59, .45));
+}
+@media (max-width: 1180px) { .home-split.home-top { width: min(720px, 100%); grid-template-columns: minmax(0, 1fr); } .home-top .feed-list { max-height: 320px; flex: none; } .home-top > .card + .card { contain: none; } }
