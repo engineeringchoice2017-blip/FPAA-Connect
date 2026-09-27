@@ -1074,3 +1074,34 @@ body.chat-open .chat-window { opacity: 1; visibility: visible; transform: none; 
   text-shadow: none; filter: drop-shadow(0 4px 18px rgba(255, 212, 59, .45));
 }
 @media (max-width: 1180px) { .home-split.home-top { width: min(720px, 100%); grid-template-columns: minmax(0, 1fr); } .home-top .feed-list { max-height: 320px; flex: none; } .home-top > .card + .card { contain: none; } }
+
+/* ---------- 28 HOME TOP: committee + contact panels in the side gaps ---------- */
+.home-top-wrap { display: grid; gap: 16px; margin-bottom: 22px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "top top" "cm ct"; }
+.home-top-wrap > .home-split.home-top { grid-area: top; width: 100%; margin: 0; }
+.home-top-wrap > .cm-panel { grid-area: cm; }
+.home-top-wrap > .cm-contact { grid-area: ct; }
+.cm-list { max-height: 330px; }
+.cm-panel, .cm-contact { padding: 16px; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.cm-panel .card-head, .cm-contact .card-head { margin-bottom: 10px; }
+.cm-list { display: grid; gap: 8px; overflow-y: auto; min-height: 0; padding-right: 2px; scrollbar-width: thin; }
+.cm-item { display: flex; gap: 10px; align-items: flex-start; padding: 10px; border-radius: 14px; background: rgba(255, 255, 255, .72); border: 1px solid var(--line); min-width: 0; }
+.cm-item .avatar { flex: none; }
+.cm-body { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cm-body b { font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.cm-pos { font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: #8A6510; }
+.cm-links { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 2px; }
+.cm-links a { display: inline-flex; align-items: center; gap: 4px; font-size: .76rem; font-weight: 700; color: var(--blue); white-space: nowrap; }
+.cm-links a .ico { width: 13px; height: 13px; }
+.ct-list { display: grid; gap: 8px; margin-bottom: 12px; min-height: 0; overflow-y: auto; }
+.ct-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 14px; background: rgba(255, 255, 255, .72); border: 1px solid var(--line); color: inherit; text-decoration: none; min-width: 0; }
+a.ct-row:hover { text-decoration: none; box-shadow: var(--shadow-soft); }
+.ct-row .ico-tile { width: 32px; height: 32px; border-radius: 10px; }
+.ct-row > span:last-child { min-width: 0; display: flex; flex-direction: column; }
+.ct-row small { font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.ct-row b { font-size: .84rem; line-height: 1.35; color: var(--text); overflow-wrap: anywhere; }
+@media (min-width: 1680px) {
+  .home-top-wrap { grid-template-columns: minmax(240px, .82fr) minmax(0, 2.6fr) minmax(240px, .82fr); grid-template-areas: "cm top ct"; }
+  .home-top-wrap > .cm-panel, .home-top-wrap > .cm-contact { contain: size; }
+  .cm-list { max-height: none; }
+}
+@media (max-width: 720px) { .home-top-wrap { grid-template-columns: minmax(0, 1fr); grid-template-areas: "top" "cm" "ct"; } .cm-list { max-height: 360px; } }

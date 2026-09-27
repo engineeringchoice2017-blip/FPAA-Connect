@@ -295,3 +295,12 @@ begin
   return true;
 end; $$;
 grant execute on function public.reset_password_with_master_key(text, text, text) to anon, authenticated;
+
+-- ---------- Committee members shown on the Home page ----------
+create table if not exists public.committee_members (
+  id uuid primary key default gen_random_uuid(), name text not null, position text not null, phone text, email text, photo text,
+  member_id uuid references public.members(id) on delete set null, sort_order int default 0, status text default 'Active', created_at timestamptz default now()
+);
+alter table public.committee_members enable row level security;
+create policy committee_public_read on public.committee_members for select using (status = 'Active' or public.has_role(array['superadmin','content']));
+create policy committee_admin_write on public.committee_members for all using (public.has_role(array['superadmin','content'])) with check (public.has_role(array['superadmin','content']));

@@ -540,7 +540,7 @@ const ADMIN_ROLES = ["committee", "superadmin", "registration", "finance", "cont
 
 const TABLES = ["members", "profiles", "membership_applications", "payments", "donations", "events", "job_postings", "achievements",
   "memories", "notices", "notifications", "support_requests", "support_replies", "scheme_applications", "volunteer_opportunities",
-  "committee_roles", "audit_logs", "member_chat_messages", "chat_read_receipts", "homepage_gallery_feed", "dashboard_live_feed"];
+  "committee_roles", "audit_logs", "member_chat_messages", "chat_read_receipts", "homepage_gallery_feed", "dashboard_live_feed", "committee_members"];
 
 const DB_KEY = "fpaa_connect_db_v1";
 const SESSION_KEY = "fpaa_connect_session";
@@ -617,6 +617,17 @@ function seedMembers(r) {
   return out;
 }
 
+const COMMITTEE_POSITIONS = ["President", "Vice President", "General Secretary", "Joint Secretary", "Treasurer", "Registration Convener", "Finance Convener", "Content & Media Convener", "Executive Member"];
+/* Demo committee (fictional sample names). Replace from Admin → Committee Members. */
+function seedCommittee(db) {
+  if ((db.committee_members || []).length) return;
+  db.committee_members = [];
+  const mgmt = (db.members || []).filter((m) => m.category === "Management Committee Membership");
+  COMMITTEE_POSITIONS.slice(0, 8).forEach((pos, i) => {
+    const m = mgmt[i]; if (!m) return;
+    db.committee_members.push({ id: uuid(), name: m.full_name, position: pos, phone: m.mobile, email: m.email, member_id: m.id, sort_order: i, status: "Active", created_at: new Date().toISOString() });
+  });
+}
 async function buildSeed() {
   const r = mulberry32(20240517);
   const db = {}; TABLES.forEach((t) => (db[t] = []));
@@ -849,6 +860,7 @@ async function buildSeed() {
   [["Super Admin", "Approved membership application", "APP-2026-0100"], ["Finance Committee", "Verified payment", "APP-2026-0105"], ["Content Team", "Published notice", "FPAA/NOT/2026/040"], ["Registration Desk", "Rejected application", "APP-2026-0098"]].forEach((a, i) =>
     db.audit_logs.push({ id: uuid(), actor: a[0], action: a[1], entity: "record", entity_ref: a[2], created_at: daysFromNow(-i * 3 - 1, 12).toISOString() }));
 
+  seedCommittee(db);
   db._meta = { version: 1, seeded_at: now.toISOString() };
   return db;
 }
@@ -873,6 +885,7 @@ const API = {
     const saved = this.readLocal();
     if (saved && saved._meta && saved._meta.version === 1) { S.db = saved; TABLES.forEach((t) => { if (!Array.isArray(S.db[t])) S.db[t] = []; });
       const DEMO_MOBILES = { "newuser@fpaa.in": "9123456712", "admin@fpaa.in": "9800000001", "registration@fpaa.in": "9800000002", "finance@fpaa.in": "9800000003", "content@fpaa.in": "9800000004" };
+      if (!S.db.committee_members.length) { seedCommittee(S.db); this.persist(); }
       let fixed = false; S.db.profiles.forEach((p) => { if (!p.mobile) { const m = p.member_id && S.db.members.find((x) => x.id === p.member_id); const mob = (m && m.mobile) || DEMO_MOBILES[p.email]; if (mob) { p.mobile = mob; fixed = true; } } if (/OTP/.test(p.auth_method || "")) { p.auth_method = "Email + Password"; fixed = true; } }); if (fixed) this.persist();
       const campus = S.db.homepage_gallery_feed.find((g) => /^Falakata Polytechnic campus/.test(g.caption || "") && String(g.image).startsWith("data:image/svg")); if (campus) { campus.image = "assets/campus.jpg"; this.persist(); } }
     else { S.db = await buildSeed(); this.persist(); }
@@ -1554,6 +1567,30 @@ const Home = {
     const feed = this.feed(); let t = 0;
     S.tickerTimer = setInterval(() => { const el = $("#liveTicker"); if (!el || !feed.length) return; t = (t + 1) % feed.length; el.style.opacity = 0; setTimeout(() => { el.textContent = feed[t].title; el.style.opacity = 1; }, 250); }, 4200);
   },
+  fmtPhone(m) { const d = normMobile(m); return d.length === 10 ? `+91 ${d.slice(0, 5)} ${d.slice(5)}` : m; },
+  committee() { return API.all("committee_members").filter((c) => c.status === "Active").sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)); },
+  committeePanel() {
+    const list = this.committee();
+    return h`<aside class="glass card cm-panel reveal" aria-label="FPAA committee">
+      <div class="card-head"><div><span class="eyebrow">${icon("shield", "ico ico-sm")} Active committee</span><h3>FPAA Committee</h3></div></div>
+      ${list.length ? h`<div class="cm-list">${list.map((c) => h`<div class="cm-item">${avatar(c.name, c.photo, "sm")}<div class="cm-body"><b title="${c.name}">${c.name}</b><span class="cm-pos">${c.position}</span>
+        <span class="cm-links">${c.phone ? h`<a href="tel:+91${normMobile(c.phone)}" title="Call ${c.name}">${icon("phone", "ico ico-sm")}${this.fmtPhone(c.phone)}</a>` : ""}${c.email ? h`<a href="mailto:${c.email}" title="${c.email}">${icon("mail", "ico ico-sm")}Email</a>` : ""}</span></div></div>`)}</div>`
+        : emptyState("No committee members listed.", "Admins can add them from Admin → Committee Members.", "users")}
+    </aside>`;
+  },
+  contactPanel() {
+    const ph = CONFIG.CONTACT_PHONE || "", em = CONFIG.CONTACT_EMAIL || "", tel = ph.replace(/[^\d+]/g, "");
+    return h`<aside class="glass card cm-contact reveal" aria-label="Contact FPAA">
+      <div class="card-head"><div><span class="eyebrow">${icon("phone", "ico ico-sm")} Contact details</span><h3>Contact FPAA</h3></div></div>
+      <div class="ct-list">
+        ${ph ? h`<a class="ct-row" href="tel:${tel}"><span class="ico-tile soft">${icon("phone", "ico ico-sm")}</span><span><small>Phone</small><b>${ph}</b></span></a>` : ""}
+        ${em ? h`<a class="ct-row" href="mailto:${em}"><span class="ico-tile soft">${icon("mail", "ico ico-sm")}</span><span><small>Email</small><b class="break">${em}</b></span></a>` : ""}
+        <div class="ct-row"><span class="ico-tile soft">${icon("pin", "ico ico-sm")}</span><span><small>Office</small><b>${CONFIG.CONTACT_ADDRESS || "Falakata Polytechnic, Falakata"}</b></span></div>
+        <div class="ct-row"><span class="ico-tile soft">${icon("clock", "ico ico-sm")}</span><span><small>Office hours</small><b>Mon – Sat, 10 AM – 5 PM</b></span></div>
+      </div>
+      <button class="btn btn-primary btn-sm btn-block" data-action="support-new" style="margin-top:auto">${icon("support", "ico ico-sm")}Send a support request</button>
+    </aside>`;
+  },
   feedIcon(type) { return { event: ["calendar", ""], notice: ["megaphone", "gold"], announcement: ["sparkles", "violet"], gallery: ["image", "teal"], achievement: ["trophy", "gold"], job: ["briefcase", ""] }[type] || ["bell", ""]; },
   feedList(limit = 8) {
     const f = this.feed().slice(0, limit);
@@ -1572,6 +1609,8 @@ Views.home = () => {
   const feed = Home.feed();
   const stat = (ic, tone, label, value, sub, d) => h`<div class="glass stat-card card-lift reveal" style="animation-delay:${d}ms"><span class="ico-tile ${tone}">${icon(ic)}</span><div class="sc-body"><div class="sc-label">${label}</div><div class="sc-value">${value}</div><div class="sc-sub">${sub}</div></div></div>`;
   return h`
+  <div class="home-top-wrap">
+  ${Home.committeePanel()}
   <div class="home-split home-top">
     <section class="glass card reveal" aria-label="Live gallery">
       <div class="live-bar"><span class="lb-tag"><span class="live-dot"></span>LIVE UPDATE</span><span class="lb-text" id="liveTicker" style="transition:opacity .25s">FPAA Connect 2.0 Community Updates${feed[0] ? " — " + feed[0].title : ""}</span></div>
@@ -1581,6 +1620,8 @@ Views.home = () => {
       <div class="card-head"><div><span class="eyebrow"><span class="live-dot"></span> Live Update</span><h3>Association Feed</h3><p class="sub">Updates, events, notices and announcements</p></div></div>
       ${Home.feedList(6)}
     </section>
+  </div>
+  ${Home.contactPanel()}
   </div>
 
   <section class="home-hero reveal" aria-label="FPAA Connect 2.0">
@@ -2887,6 +2928,7 @@ const ADMIN_PANELS = [
   { id: "finance", label: "Finance & Reports", icon: "pie", group: "Finance Review & Verification", perm: "admin.finance" },
   { id: "support", label: "Support Requests", icon: "support", group: "Support & Member Service", perm: "admin.support", badge: () => API.all("support_requests").filter((t) => t.status === "Open").length },
   { id: "feed", label: "Dashboard Feed & Gallery", icon: "image", group: "Content Management", perm: "admin.content" },
+  { id: "committee", label: "Committee Members", icon: "shield", group: "Content Management", perm: "admin.content" },
   { id: "events", label: "Events", icon: "calendar", group: "Content Management", perm: "admin.content" },
   { id: "notices", label: "Notices", icon: "megaphone", group: "Content Management", perm: "admin.content" },
   { id: "achievements", label: "Achievements", icon: "trophy", group: "Content Management", perm: "admin.content", badge: () => API.all("achievements").filter((a) => a.status === "Pending").length },
@@ -3244,6 +3286,52 @@ Actions["adm-gal-delete"] = async (el) => { if (!(await confirmDialog({ title: "
 Actions["adm-feed-add"] = async (form) => { const v = validate(form, { title: [req()], body: [req()] }); if (!v) return; await busy(form.querySelector('[type="submit"]'), "Posting…", async () => { await API.insert("dashboard_live_feed", { type: v.type, title: v.title, body: v.body, status: "Published" }); audit("Posted live feed update", v.title); toast("success", "Update posted to live feed"); Admin.rerender(); }); };
 Actions["adm-feed-toggle"] = async (el) => { const f = API.get("dashboard_live_feed", el.dataset.id); await API.update("dashboard_live_feed", f.id, { status: f.status === "Draft" ? "Published" : "Draft" }); toast("success", "Feed updated"); Admin.rerender(); };
 Actions["adm-feed-delete"] = async (el) => { if (!(await confirmDialog({ title: "Delete update?", message: "This live-feed post will be removed.", confirmText: "Delete", danger: true }))) return; await API.remove("dashboard_live_feed", el.dataset.id); toast("success", "Feed post deleted"); Admin.rerender(); };
+
+/* ---------- Committee members (shown on Home) ---------- */
+AdminPanels.committee = () => {
+  const rows = API.all("committee_members").slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  return h`${admToolbar(h`<span class="small muted grow">These members appear on the Home page with their position and contact details. Only <b>Active</b> members are shown; use the arrows to set the order.</span><button class="btn btn-primary btn-sm" data-action="adm-cm-edit" data-id="">${icon("plus", "ico ico-sm")}Add member</button>`)}
+    ${admTable([
+      { label: "#", render: (c) => h`<span class="chip slate">${(c.sort_order ?? 0) + 1}</span>` },
+      { label: "Name", render: (c) => h`<div class="row" style="flex-wrap:nowrap;gap:8px">${avatar(c.name, c.photo, "sm")}<b>${c.name}</b></div>` },
+      { label: "Position", render: (c) => h`<span class="chip gold">${c.position}</span>` },
+      { label: "Phone", render: (c) => c.phone ? Home.fmtPhone(c.phone) : "—", cls: "nowrap" },
+      { label: "Email", render: (c) => c.email || "—" },
+      { label: "Status", render: (c) => statusPill(c.status) },
+      { label: "Actions", render: (c) => { const i = rows.indexOf(c); return h`<div class="actions">${ab("adm-cm-move", c.id, "", "up", "btn-ghost", `data-dir="-1" aria-label="Move up" ${i === 0 ? "disabled" : ""}`)}${ab("adm-cm-move", c.id, "", "down", "btn-ghost", `data-dir="1" aria-label="Move down" ${i === rows.length - 1 ? "disabled" : ""}`)}${ab("adm-cm-edit", c.id, "Edit", "edit")}${ab("adm-cm-toggle", c.id, c.status === "Active" ? "Hide" : "Show", c.status === "Active" ? "eyeOff" : "eye")}${ab("adm-cm-delete", c.id, "Delete", "trash")}</div>`; } }
+    ], rows, { wide: true, empty: "No committee members yet." })}`;
+};
+Actions["adm-cm-edit"] = (el) => {
+  const c = el.dataset.id ? API.get("committee_members", el.dataset.id) : { status: "Active" };
+  Modal.open({ title: c.id ? "Edit committee member" : "Add committee member", eyebrow: "Committee Members", body: h`<form data-submit="adm-cm-save" data-id="${c.id || ""}" novalidate><div class="form-grid">
+    ${field({ label: "Full name", name: "name", required: true, value: c.name, span: true, attrs: 'maxlength="80"' })}
+    ${field({ label: "Position", name: "position", required: true, value: c.position, placeholder: "e.g. President", attrs: 'list="cmPositions" maxlength="60"' })}
+    ${field({ label: "Status", name: "status", options: ["Active", "Inactive"], value: c.status || "Active" })}
+    ${field({ label: "Mobile number", name: "phone", type: "tel", value: c.phone, hint: "Shown publicly on Home — leave empty to hide.", attrs: 'inputmode="numeric" maxlength="16"' })}
+    ${field({ label: "Email", name: "email", type: "email", value: c.email, hint: "Optional." })}
+  </div><datalist id="cmPositions">${COMMITTEE_POSITIONS.map((p) => h`<option value="${p}">`)}</datalist>
+  <div class="form-actions"><button type="button" class="btn btn-ghost" data-action="modal-close">Cancel</button><button class="btn btn-primary" type="submit">${icon("check")}Save</button></div></form>` });
+};
+Actions["adm-cm-save"] = async (form) => {
+  const v = validate(form, { name: [req()], position: [req()], phone: [vMobile], email: [vEmail] }); if (!v) return;
+  await busy(form.querySelector('[type="submit"]'), "Saving…", async () => {
+    try {
+      const data = { name: v.name, position: v.position, phone: v.phone ? normMobile(v.phone) : "", email: v.email.toLowerCase(), status: v.status };
+      if (form.dataset.id) await API.update("committee_members", form.dataset.id, data);
+      else await API.insert("committee_members", Object.assign(data, { sort_order: API.all("committee_members").length }));
+      audit("Saved committee member", v.name); Modal.close(); toast("success", "Committee member saved", `${v.name} · ${v.position}`); Admin.rerender();
+    } catch (e) { toast("error", "Could not save.", e.message); }
+  });
+};
+Actions["adm-cm-move"] = async (el) => {
+  const rows = API.all("committee_members").slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const i = rows.findIndex((r) => r.id === el.dataset.id), j = i + Number(el.dataset.dir); if (j < 0 || j >= rows.length) return;
+  [rows[i], rows[j]] = [rows[j], rows[i]];
+  for (let k = 0; k < rows.length; k++) if (rows[k].sort_order !== k) await API.update("committee_members", rows[k].id, { sort_order: k });
+  Admin.rerender();
+};
+Actions["adm-cm-toggle"] = async (el) => { const c = API.get("committee_members", el.dataset.id); await busy(el, "…", () => API.update("committee_members", c.id, { status: c.status === "Active" ? "Inactive" : "Active" })); toast("success", c.status === "Active" ? "Hidden from Home" : "Shown on Home", c.name); Admin.rerender(); };
+Actions["adm-cm-delete"] = async (el) => { const c = API.get("committee_members", el.dataset.id); if (!(await confirmDialog({ title: "Remove committee member?", message: `${c.name} (${c.position}) will be removed from the committee list.`, confirmText: "Remove", danger: true }))) return; await API.remove("committee_members", c.id); audit("Removed committee member", c.name); toast("success", "Committee member removed"); Admin.rerender(); };
 
 /* ---------- Events CRUD ---------- */
 AdminPanels.events = () => {
