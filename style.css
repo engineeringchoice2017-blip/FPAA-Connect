@@ -1105,3 +1105,29 @@ a.ct-row:hover { text-decoration: none; box-shadow: var(--shadow-soft); }
   .cm-list { max-height: none; }
 }
 @media (max-width: 720px) { .home-top-wrap { grid-template-columns: minmax(0, 1fr); grid-template-areas: "top" "cm" "ct"; } .cm-list { max-height: 360px; } }
+
+/* ---------- 29 COMPACT committee + contact sections ---------- */
+.cm-panel, .cm-contact { padding: 14px 16px; }
+.cm-panel .card-head, .cm-contact .card-head { margin-bottom: 8px; }
+.cm-panel .card-head h3, .cm-contact .card-head h3 { font-size: 1rem; }
+.cm-item { padding: 7px 10px; gap: 9px; align-items: center; }
+.cm-item .avatar.sm { width: 30px; height: 30px; font-size: .7rem; }
+.cm-body { gap: 0; }
+.cm-links { margin-top: 1px; }
+.ct-row { padding: 6px 10px; align-items: center; }
+.ct-row .ico-tile { width: 28px; height: 28px; border-radius: 9px; }
+.ct-list { gap: 6px; margin-bottom: 10px; }
+.cm-contact .btn-block { min-height: 34px; }
+/* Stacked (below 1680px): members in columns, short scroll; contact in a 2×2 grid */
+.cm-list { max-height: 170px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; }
+.cm-contact .ct-list { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.cm-contact .ct-wide { grid-column: 1 / -1; }
+.ct-wide b { font-size: .8rem; }
+@media (min-width: 1680px) {
+  .home-top .gallery-frame { aspect-ratio: 16 / 7; }
+  .cm-list { max-height: none; grid-template-columns: minmax(0, 1fr); }
+  .cm-contact .ct-list { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) { .cm-list { max-height: 230px; grid-template-columns: minmax(0, 1fr); } .cm-contact .ct-list { grid-template-columns: minmax(0, 1fr); } }
+.cm-links { flex-wrap: nowrap; align-items: center; gap: 8px; }
+.cm-links a.cm-mail { width: 22px; height: 22px; border-radius: 7px; justify-content: center; background: rgba(59, 130, 246, .10); flex: none; }

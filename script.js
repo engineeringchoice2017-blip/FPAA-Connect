@@ -1574,7 +1574,7 @@ const Home = {
     return h`<aside class="glass card cm-panel reveal" aria-label="FPAA committee">
       <div class="card-head"><div><span class="eyebrow">${icon("shield", "ico ico-sm")} Active committee</span><h3>FPAA Committee</h3></div></div>
       ${list.length ? h`<div class="cm-list">${list.map((c) => h`<div class="cm-item">${avatar(c.name, c.photo, "sm")}<div class="cm-body"><b title="${c.name}">${c.name}</b><span class="cm-pos">${c.position}</span>
-        <span class="cm-links">${c.phone ? h`<a href="tel:+91${normMobile(c.phone)}" title="Call ${c.name}">${icon("phone", "ico ico-sm")}${this.fmtPhone(c.phone)}</a>` : ""}${c.email ? h`<a href="mailto:${c.email}" title="${c.email}">${icon("mail", "ico ico-sm")}Email</a>` : ""}</span></div></div>`)}</div>`
+        <span class="cm-links">${c.phone ? h`<a href="tel:+91${normMobile(c.phone)}" title="Call ${c.name}">${icon("phone", "ico ico-sm")}${this.fmtPhone(c.phone)}</a>` : ""}${c.email ? h`<a class="cm-mail" href="mailto:${c.email}" title="Email ${c.email}" aria-label="Email ${c.name}">${icon("mail", "ico ico-sm")}</a>` : ""}</span></div></div>`)}</div>`
         : emptyState("No committee members listed.", "Admins can add them from Admin → Committee Members.", "users")}
     </aside>`;
   },
@@ -1585,7 +1585,7 @@ const Home = {
       <div class="ct-list">
         ${ph ? h`<a class="ct-row" href="tel:${tel}"><span class="ico-tile soft">${icon("phone", "ico ico-sm")}</span><span><small>Phone</small><b>${ph}</b></span></a>` : ""}
         ${em ? h`<a class="ct-row" href="mailto:${em}"><span class="ico-tile soft">${icon("mail", "ico ico-sm")}</span><span><small>Email</small><b class="break">${em}</b></span></a>` : ""}
-        <div class="ct-row"><span class="ico-tile soft">${icon("pin", "ico ico-sm")}</span><span><small>Office</small><b>${CONFIG.CONTACT_ADDRESS || "Falakata Polytechnic, Falakata"}</b></span></div>
+        <div class="ct-row ct-wide"><span class="ico-tile soft">${icon("pin", "ico ico-sm")}</span><span><small>Office</small><b>${CONFIG.CONTACT_ADDRESS || "Falakata Polytechnic, Falakata"}</b></span></div>
         <div class="ct-row"><span class="ico-tile soft">${icon("clock", "ico ico-sm")}</span><span><small>Office hours</small><b>Mon – Sat, 10 AM – 5 PM</b></span></div>
       </div>
       <button class="btn btn-primary btn-sm btn-block" data-action="support-new" style="margin-top:auto">${icon("support", "ico ico-sm")}Send a support request</button>
