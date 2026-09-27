@@ -2556,6 +2556,9 @@ Actions["mem-submit"] = async (form) => {
    ===================================================================== */
 const Schemes = {
   all() { return API.all("volunteer_opportunities"); },
+  /* Portrait of the person each scheme is named after (kept in code, so no DB change is needed). */
+  PHOTOS: { "scheme-savitribai": ["assets/scheme-savitribai.webp", "Savitribai Fule"], "scheme-visvesvaraya": ["assets/scheme-visvesvaraya.webp", "Sir M. Visvesvaraya"], "scheme-kalam": ["assets/scheme-kalam.webp", "Dr. A.P.J. Abdul Kalam"] },
+  portrait(s, cls = "") { const p = this.PHOTOS[s.id]; return p ? h`<img class="sch-portrait ${cls}" src="${p[0]}" alt="${p[1]}" loading="lazy" width="400" height="400">` : h`<span class="ico-tile">${icon(s.icon)}</span>`; },
   apps(id) { return API.all("scheme_applications").filter((a) => !id || a.scheme_id === id); },
   mine(id) { return this.apps(id).filter((a) => S.profile && a.user_id === S.profile.id); }
 };
@@ -2565,7 +2568,7 @@ Views.scheme = (r) => {
   const mine = Schemes.mine();
   return h`${pageHead({ eyebrow: "Scholarships & skills", title: "ALUMNI SPONSORED SCHEME", sub: "Alumni-funded programmes that reward merit, support students in need and build job-ready skills. Open a folder to see eligibility, selection criteria and benefits." })}
     <div class="sch-grid">${Schemes.all().map((s, i) => h`<button class="sch-folder ${s.tone} reveal" style="animation-delay:${i * 90}ms" data-action="go" data-to="#scheme/${s.id}">
-      <span class="row" style="justify-content:space-between;width:100%"><span class="ico-tile">${icon(s.icon)}</span><span class="chip slate">${icon("folder", "ico ico-sm")} ${s.code}</span></span>
+      <span class="row" style="justify-content:space-between;width:100%;align-items:flex-start">${Schemes.portrait(s)}<span class="chip slate">${icon("folder", "ico ico-sm")} ${s.code}</span></span>
       <h3>${s.name}</h3><span class="chip ${i === 0 ? "violet" : i === 1 ? "" : "gold"}" style="align-self:flex-start">${s.audience}</span><p>${s.summary}</p>
       <span class="sf-foot"><span>${icon("calendar", "ico ico-sm")} ${s.deadline}</span><span>${s.seats} seats</span><span style="color:var(--indigo)">Open folder ${icon("chevR", "ico ico-sm")}</span></span></button>`)}</div>
     <section class="section glass card reveal"><div class="card-head"><div><span class="eyebrow">${icon("file", "ico ico-sm")} Your applications</span><h3>My scheme applications</h3></div></div>
@@ -2587,7 +2590,7 @@ Schemes.detail = (s) => {
       <div><h4>Track an application</h4><form data-submit="scheme-track" novalidate class="stack">${field({ label: "Application Number", name: "application_no", placeholder: "FAS-2026-0001", attrs: 'style="text-transform:uppercase"' })}${field({ label: "Mobile", name: "mobile", type: "tel", attrs: 'inputmode="numeric" maxlength="16"' })}<button class="btn btn-primary" type="submit">${icon("search")}Check status</button><div class="form-msg" id="schTrackMsg"></div></form></div></div>`;
   }
   return h`<button class="btn btn-ghost btn-sm reveal" data-action="go" data-to="#scheme" style="margin-bottom:14px">${icon("arrowL", "ico ico-sm")}All schemes</button>
-    <section class="glass sch-detail-head reveal"><span class="ico-tile ${s.tone === "f-gold" ? "gold" : s.tone === "f-rose" ? "violet" : ""}">${icon(s.icon, "ico ico-lg")}</span><div style="min-width:0"><span class="eyebrow">Alumni Sponsored Scheme · ${s.code}</span><h1 style="font-size:clamp(1.4rem,2.6vw,2rem);margin:6px 0">${s.name}</h1><p class="muted" style="margin:0">${s.summary}</p>
+    <section class="glass sch-detail-head reveal">${Schemes.portrait(s, "lg")}<div style="min-width:0"><span class="eyebrow">Alumni Sponsored Scheme · ${s.code}</span><h1 style="font-size:clamp(1.4rem,2.6vw,2rem);margin:6px 0">${s.name}</h1><p class="muted" style="margin:0">${s.summary}</p>
       <div class="row" style="margin-top:10px"><span class="chip violet">${s.audience}</span><span class="chip">${icon("calendar", "ico ico-sm")} Last date: ${s.deadline}</span><span class="chip gold">${s.seats} seats</span></div></div></section>
     <div class="section"><div class="tabs reveal" role="tablist">${tabs.map((t) => h`<button class="tab ${tab === t[0] ? "active" : ""}" role="tab" aria-selected="${String(tab === t[0])}" data-action="scheme-tab" data-tab="${t[0]}">${t[1]}</button>`)}</div></div>
     <section class="glass card reveal" style="margin-top:14px">${body}</section>`;
@@ -3165,7 +3168,7 @@ Actions["adm-member-save"] = async (form) => {
 /* ---------- Scheme applications ---------- */
 AdminPanels.schemes = () => {
   const u = uiOf("aSch", { sort: "new" }); const schemes = Schemes.all();
-  const counts = schemes.map((s) => h`<div class="glass stat-card"><span class="ico-tile ${s.tone === "f-gold" ? "gold" : s.tone === "f-rose" ? "violet" : ""}">${icon(s.icon)}</span><div class="sc-body"><div class="sc-label">${s.code}</div><div class="sc-value">${Schemes.apps(s.id).length}</div><div class="sc-sub">${Schemes.apps(s.id).filter((a) => a.status === "Approved").length} approved · ${s.seats} seats</div></div></div>`);
+  const counts = schemes.map((s) => h`<div class="glass stat-card">${Schemes.portrait(s, "sm")}<div class="sc-body"><div class="sc-label">${s.code}</div><div class="sc-value">${Schemes.apps(s.id).length}</div><div class="sc-sub">${Schemes.apps(s.id).filter((a) => a.status === "Approved").length} approved · ${s.seats} seats</div></div></div>`);
   return h`<div class="grid grid-3" style="margin-bottom:18px">${counts}</div>
     ${admToolbar(h`${searchFilter("aSch.q", u.q, "Search applicant, application no.…")}${selectFilter("aSch.scheme", u.scheme, schemes.map((s) => ({ value: s.id, label: s.name })), "All schemes")}${selectFilter("aSch.status", u.status, SCHEME_STATUSES, "All statuses")}${sortSelect("aSch", u.sort, [["new", "Newest first"], ["pct", "Highest %"], ["name", "Name A–Z"]])}<button class="btn btn-ghost btn-sm" data-action="clear-filters" data-group="aSch">${icon("x", "ico ico-sm")}Clear</button><button class="btn btn-soft btn-sm" data-action="adm-export" data-what="schemes" data-fmt="csv">${icon("download", "ico ico-sm")}CSV</button>`)}
     ${Admin.listRender("aSch", AdminLists.schemes)}`;

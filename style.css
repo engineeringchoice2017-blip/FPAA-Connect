@@ -1140,3 +1140,12 @@ a.ct-row:hover { text-decoration: none; box-shadow: var(--shadow-soft); }
 .drive-album .da-frame { border-radius: 14px; overflow: hidden; border: 1px solid var(--border); background: #fff; height: 340px; }
 .drive-album .da-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
 @media (max-width: 720px) { .drive-album .da-frame { height: 280px; } .drive-album .da-head .btn { width: 100%; justify-content: center; } }
+
+/* ===================== 31. Scheme portraits ===================== */
+.sch-portrait { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; background: #fff; border: 4px solid #fff; box-shadow: 0 0 0 3px rgba(99, 102, 241, .28), 0 12px 26px rgba(21, 54, 95, .22); transition: transform .6s var(--ease); }
+.sch-folder.f-rose .sch-portrait { box-shadow: 0 0 0 3px rgba(236, 72, 153, .35), 0 12px 26px rgba(21, 54, 95, .22); }
+.sch-folder.f-gold .sch-portrait { box-shadow: 0 0 0 3px rgba(212, 160, 23, .45), 0 12px 26px rgba(21, 54, 95, .22); }
+.sch-folder:hover .sch-portrait { transform: perspective(400px) rotateY(-10deg) scale(1.04); }
+.sch-portrait.lg { width: 124px; height: 124px; }
+.sch-portrait.sm { width: 48px; height: 48px; border-width: 2px; }
+@media (max-width: 720px) { .sch-portrait { width: 80px; height: 80px; } .sch-portrait.lg { width: 92px; height: 92px; } }
