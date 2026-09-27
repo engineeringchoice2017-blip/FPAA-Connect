@@ -2558,6 +2558,8 @@ const Schemes = {
   all() { return API.all("volunteer_opportunities"); },
   /* Portrait of the person each scheme is named after (kept in code, so no DB change is needed). */
   PHOTOS: { "scheme-savitribai": ["assets/scheme-savitribai.webp", "Savitribai Fule"], "scheme-visvesvaraya": ["assets/scheme-visvesvaraya.webp", "Sir M. Visvesvaraya"], "scheme-kalam": ["assets/scheme-kalam.webp", "Dr. A.P.J. Abdul Kalam"] },
+  /* Official rule book PDF for each scheme. */
+  DOCS: { "scheme-savitribai": ["assets/docs/Savitribai-Fule-Scholarship-Rule-Book.pdf", "Savitribai Phule Excellence Scholarship — Scholarship Scheme Rule Book"], "scheme-visvesvaraya": ["assets/docs/Visvesvaraya-Scholarship-Rule-Book.pdf", "Sir M. Visvesvaraya Excellence Scholarship — Scholarship Scheme Rule Book"], "scheme-kalam": ["assets/docs/APJ-Kalam-Evolutionary-Growth-Rule-Book.pdf", "Evolutionary Growth — Dr. A.P.J. Abdul Kalam Youth Skill Development Programme Rule Book"] },
   portrait(s, cls = "") { const p = this.PHOTOS[s.id]; return p ? h`<img class="sch-portrait ${cls}" src="${p[0]}" alt="${p[1]}" loading="lazy" width="400" height="400">` : h`<span class="ico-tile">${icon(s.icon)}</span>`; },
   apps(id) { return API.all("scheme_applications").filter((a) => !id || a.scheme_id === id); },
   mine(id) { return this.apps(id).filter((a) => S.profile && a.user_id === S.profile.id); }
@@ -2576,13 +2578,19 @@ Views.scheme = (r) => {
         : emptyState("No scheme applications yet.", "Applications you submit through the Scheme Committee will appear here.", "school")}</section>`;
 };
 Schemes.detail = (s) => {
-  const tab = ["eligibility", "criteria", "benefits", "status"].includes(S.ui.scheme.tab) ? S.ui.scheme.tab : "eligibility";
-  const tabs = [["eligibility", "Eligibility"], ["criteria", "Criteria"], ["benefits", "Benefits"], ["status", "Status"]];
+  const tab = ["eligibility", "criteria", "benefits", "rulebook", "status"].includes(S.ui.scheme.tab) ? S.ui.scheme.tab : "eligibility";
+  const doc = Schemes.DOCS[s.id];
+  const tabs = [["eligibility", "Eligibility"], ["criteria", "Criteria"], ["benefits", "Benefits"], ...(doc ? [["rulebook", "Rule Book (PDF)"]] : []), ["status", "Status"]];
   const listOf = (arr, ic) => h`<ul class="sch-list">${arr.map((x) => h`<li>${icon(ic)}<span>${x}</span></li>`)}</ul>`;
   let body;
   if (tab === "eligibility") body = listOf(s.eligibility, "check");
   else if (tab === "criteria") body = listOf(s.criteria, "target");
   else if (tab === "benefits") body = listOf(s.benefits, "gift");
+  else if (tab === "rulebook" && doc) body = h`<div class="sch-doc-bar"><span class="ico-tile gold">${icon("file")}</span><div class="grow" style="min-width:0"><b>${doc[1]}</b><span class="small muted">Official rule book issued by Falakata Polytechnic Alumni Association · PDF</span></div>
+      <div class="btn-group"><a class="btn btn-primary btn-sm" href="${doc[0]}" target="_blank" rel="noopener">${icon("external", "ico ico-sm")}Open</a><a class="btn btn-soft btn-sm" href="${doc[0]}" download>${icon("download", "ico ico-sm")}Download</a></div></div>
+    <div class="sch-doc-frame"><iframe src="${doc[0]}#view=FitH" title="${doc[1]}" loading="lazy"></iframe></div>
+    <p class="small muted sch-doc-note">If the preview does not appear on your device, use <b>Open</b> or <b>Download</b>.</p>`;
+  else if (tab === "rulebook") body = emptyState("Rule book not available.", "", "file");
   else {
     const apps = Schemes.apps(s.id); const mine = Schemes.mine(s.id); const c = countBy(apps, (a) => a.status);
     body = h`<div class="grid grid-4" style="margin-bottom:18px">${SCHEME_STATUSES.slice(0, 4).map((st) => h`<div class="glass stat-card" style="box-shadow:none"><div class="sc-body"><div class="sc-label">${st}</div><div class="sc-value">${c[st] || 0}</div></div></div>`)}</div>
@@ -2591,7 +2599,7 @@ Schemes.detail = (s) => {
   }
   return h`<button class="btn btn-ghost btn-sm reveal" data-action="go" data-to="#scheme" style="margin-bottom:14px">${icon("arrowL", "ico ico-sm")}All schemes</button>
     <section class="glass sch-detail-head reveal">${Schemes.portrait(s, "lg")}<div style="min-width:0"><span class="eyebrow">Alumni Sponsored Scheme · ${s.code}</span><h1 style="font-size:clamp(1.4rem,2.6vw,2rem);margin:6px 0">${s.name}</h1><p class="muted" style="margin:0">${s.summary}</p>
-      <div class="row" style="margin-top:10px"><span class="chip violet">${s.audience}</span><span class="chip">${icon("calendar", "ico ico-sm")} Last date: ${s.deadline}</span><span class="chip gold">${s.seats} seats</span></div></div></section>
+      <div class="row" style="margin-top:10px"><span class="chip violet">${s.audience}</span><span class="chip">${icon("calendar", "ico ico-sm")} Last date: ${s.deadline}</span><span class="chip gold">${s.seats} seats</span></div>${doc ? h`<div class="btn-group" style="margin-top:12px"><button class="btn btn-primary btn-sm" data-action="scheme-tab" data-tab="rulebook">${icon("file", "ico ico-sm")}Read rule book</button><a class="btn btn-ghost btn-sm" href="${doc[0]}" download>${icon("download", "ico ico-sm")}Download PDF</a></div>` : ""}</div></section>
     <div class="section"><div class="tabs reveal" role="tablist">${tabs.map((t) => h`<button class="tab ${tab === t[0] ? "active" : ""}" role="tab" aria-selected="${String(tab === t[0])}" data-action="scheme-tab" data-tab="${t[0]}">${t[1]}</button>`)}</div></div>
     <section class="glass card reveal" style="margin-top:14px">${body}</section>`;
 };

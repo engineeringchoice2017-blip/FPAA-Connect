@@ -128,3 +128,4 @@ Every `git push` to `main` redeploys automatically.
 - **Exports:** CSV and Excel from Members, Applications, Payments, Donations, Schemes and Finance Reports; PPT from the Home dashboard.
 - **Logo:** the official emblem is `assets/fpaa-logo.png`. To update it, replace that file (keep the name) or change `LOGO_URL` in `supabase-config.js`.
 - **Memories on Google Drive:** photo albums are listed in `MEMORY_DRIVE_FOLDERS` in `supabase-config.js` and shown as embedded Drive folders on the Memories page. Members share a memory by pasting a Google Drive photo link (shared as "Anyone with the link"), so no images are stored in the app or in Supabase.
+- **Scheme rule books:** each Alumni Sponsored Scheme has its official PDF in `assets/docs/` (Rule Book tab + download). To update one, replace the PDF with the same file name.

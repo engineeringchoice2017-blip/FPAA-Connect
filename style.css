@@ -1149,3 +1149,16 @@ a.ct-row:hover { text-decoration: none; box-shadow: var(--shadow-soft); }
 .sch-portrait.lg { width: 124px; height: 124px; }
 .sch-portrait.sm { width: 48px; height: 48px; border-width: 2px; }
 @media (max-width: 720px) { .sch-portrait { width: 80px; height: 80px; } .sch-portrait.lg { width: 92px; height: 92px; } }
+
+/* ===================== 32. Scheme rule book PDF ===================== */
+.sch-doc-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.sch-doc-bar .grow b { display: block; overflow-wrap: anywhere; }
+.sch-doc-frame { border-radius: 14px; overflow: hidden; border: 1px solid var(--border); background: #525659; height: min(78vh, 900px); }
+.sch-doc-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+.sch-doc-note { margin: 10px 0 0; }
+@media (max-width: 720px) {
+  .sch-doc-frame { display: none; }
+  .sch-doc-bar .btn-group { width: 100%; }
+  .sch-doc-bar .btn-group .btn { flex: 1; justify-content: center; }
+  .sch-doc-note { display: none; }
+}
