@@ -174,8 +174,7 @@ const RX = {
   email: /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
   mobile: /^[6-9]\d{9}$/,
   membership: /^FPAA-M-\d{4}-\d{6}$/,
-  pin: /^[1-9]\d{5}$/,
-  otp: /^\d{6}$/
+  pin: /^[1-9]\d{5}$/
 };
 function normMobile(v) { let d = String(v || "").replace(/\D/g, ""); if (d.length === 12 && d.startsWith("91")) d = d.slice(2); if (d.length === 11 && d.startsWith("0")) d = d.slice(1); return d; }
 function normMembership(v) { return String(v || "").trim().toUpperCase().replace(/\s+/g, ""); }
@@ -545,7 +544,6 @@ const TABLES = ["members", "profiles", "membership_applications", "payments", "d
 
 const DB_KEY = "fpaa_connect_db_v1";
 const SESSION_KEY = "fpaa_connect_session";
-const OTP_KEY = "fpaa_connect_otp";
 
 const S = {
   db: null, session: null, profile: null, member: null,
@@ -626,19 +624,19 @@ async function buildSeed() {
   const members = seedMembers(r); db.members = members;
 
   // ---- Profiles (accounts) — demo credentials only ----
-  const mkProfile = async (email, full_name, role, pw, member, auth = "Email") => {
+  const mkProfile = async (email, full_name, role, pw, member, mobile) => {
     const salt = randomToken(8);
-    const p = { id: uuid(), email, full_name, role, member_id: member ? member.id : null, auth_method: auth, status: "Active", salt, password_hash: await hashPassword(pw, salt), last_login: null, created_at: new Date(2026, 0, 5).toISOString() };
+    const p = { id: uuid(), email, full_name, mobile: member ? member.mobile : mobile, role, member_id: member ? member.id : null, auth_method: "Email + Password", status: "Active", salt, password_hash: await hashPassword(pw, salt), last_login: null, created_at: new Date(2026, 0, 5).toISOString() };
     if (member) member.user_id = p.id;
     return p;
   };
   db.profiles = [
     await mkProfile("member@fpaa.in", "Rahul Barman", "member", "Member@123", members[0]),
-    await mkProfile("newuser@fpaa.in", "Sneha Roy", "member", "Welcome@123", null),
-    await mkProfile("admin@fpaa.in", "FPAA Super Admin", "superadmin", "Admin@123", null),
-    await mkProfile("registration@fpaa.in", "Registration Desk", "registration", "Admin@123", null),
-    await mkProfile("finance@fpaa.in", "Finance Committee", "finance", "Admin@123", null),
-    await mkProfile("content@fpaa.in", "Content Team", "content", "Admin@123", null),
+    await mkProfile("newuser@fpaa.in", "Sneha Roy", "member", "Welcome@123", null, "9123456712"),
+    await mkProfile("admin@fpaa.in", "FPAA Super Admin", "superadmin", "Admin@123", null, "9800000001"),
+    await mkProfile("registration@fpaa.in", "Registration Desk", "registration", "Admin@123", null, "9800000002"),
+    await mkProfile("finance@fpaa.in", "Finance Committee", "finance", "Admin@123", null, "9800000003"),
+    await mkProfile("content@fpaa.in", "Content Team", "content", "Admin@123", null, "9800000004"),
     await mkProfile("committee@fpaa.in", "Arindam Sarkar", "committee", "Admin@123", members[2])
   ];
   db.committee_roles = db.profiles.filter((p) => p.role !== "member").map((p) => ({ id: uuid(), user_id: p.id, role: p.role, assigned_at: p.created_at }));
@@ -790,7 +788,7 @@ async function buildSeed() {
     ["SUP-2026-0004", U.member, "Donation receipt for DON-2026-0001", "Payment", "Resolved", -40, ["Please share a receipt for my donation DON-2026-0001.", "Your donation has been verified. The receipt is available in My Donations. — Finance Committee"]],
     ["SUP-2026-0009", U.newuser, "How do I link my membership?", "Membership", "Open", -1, ["I have membership number FPAA-M-2024-000012 but my account shows no membership."]],
     ["SUP-2026-0005", null, "Scholarship application deadline", "Scheme", "Closed", -25, ["Is the scholarship deadline extended?", "The deadline is 31 Oct 2026 as per notice FPAA/NOT/2026/039. — Scheme Committee"]],
-    ["SUP-2026-0008", null, "Unable to receive email OTP", "Technical", "Open", -2, ["I am not receiving the OTP on my email address."]]
+    ["SUP-2026-0008", null, "Cannot sign in after changing my phone", "Technical", "Open", -2, ["I changed my mobile number and my recovery key no longer works. Please update my number."]]
   ];
   tickets.forEach((t) => {
     const tk = { id: uuid(), ticket_no: t[0], user_id: t[1] ? t[1].id : null, requester_name: t[1] ? t[1].full_name : "Guest Alumni", requester_email: t[1] ? t[1].email : "guest@example.com", subject: t[2], category: t[3], status: t[4], assigned_to: t[3] === "Payment" ? "Finance Committee" : "Registration Committee", created_at: daysFromNow(t[5], 10).toISOString(), updated_at: daysFromNow(t[5] + (t[6].length > 1 ? 1 : 0), 15).toISOString() };
@@ -874,6 +872,8 @@ const API = {
     }
     const saved = this.readLocal();
     if (saved && saved._meta && saved._meta.version === 1) { S.db = saved; TABLES.forEach((t) => { if (!Array.isArray(S.db[t])) S.db[t] = []; });
+      const DEMO_MOBILES = { "newuser@fpaa.in": "9123456712", "admin@fpaa.in": "9800000001", "registration@fpaa.in": "9800000002", "finance@fpaa.in": "9800000003", "content@fpaa.in": "9800000004" };
+      let fixed = false; S.db.profiles.forEach((p) => { if (!p.mobile) { const m = p.member_id && S.db.members.find((x) => x.id === p.member_id); const mob = (m && m.mobile) || DEMO_MOBILES[p.email]; if (mob) { p.mobile = mob; fixed = true; } } if (/OTP/.test(p.auth_method || "")) { p.auth_method = "Email + Password"; fixed = true; } }); if (fixed) this.persist();
       const campus = S.db.homepage_gallery_feed.find((g) => /^Falakata Polytechnic campus/.test(g.caption || "") && String(g.image).startsWith("data:image/svg")); if (campus) { campus.image = "assets/campus.jpg"; this.persist(); } }
     else { S.db = await buildSeed(); this.persist(); }
   },
@@ -1016,64 +1016,82 @@ const Auth = {
     }
     audit("Signed in via " + method, profile.email);
   },
-  async loginPassword(email, password, remember) {
-    email = email.trim().toLowerCase();
+  /* Recovery ("master") key = first 4 letters of the registered name in CAPITALS
+     + last 4 digits of the registered mobile. e.g. Rahul Barman, 9876543206 → RAHU3206 */
+  recoveryKey(name, mobile) {
+    const letters = String(name || "").replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 4);
+    const digits = normMobile(mobile).slice(-4);
+    return letters && digits.length === 4 ? letters + digits : "";
+  },
+  profileMobile(p) { const m = p.member_id && API.get("members", p.member_id); return normMobile((m && m.mobile) || p.mobile || ""); },
+  findByIdentifier(id) {
+    id = String(id || "").trim().toLowerCase();
+    if (id.includes("@")) return API.find("profiles", (x) => x.email.toLowerCase() === id);
+    const mob = normMobile(id); if (!RX.mobile.test(mob)) return null;
+    return API.find("profiles", (x) => this.profileMobile(x) === mob);
+  },
+  async loginPassword(identifier, password, remember) {
+    identifier = identifier.trim().toLowerCase();
     if (API.mode === "supabase") {
+      let email = identifier;
+      if (!identifier.includes("@")) {
+        const { data } = await supabaseClient.rpc("email_for_mobile", { p_mobile: normMobile(identifier) });
+        if (!data) throw new Error("Incorrect email/mobile or password.");
+        email = data;
+      }
       const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (error) throw new Error(error.message);
+      if (error) throw new Error(error.message === "Invalid login credentials" ? "Incorrect email/mobile or password." : error.message);
       if (!remember) sessionStorage.setItem("fpaa_sb_ephemeral", "1");
       return data;
     }
     await API.latency(500);
-    const p = API.find("profiles", (x) => x.email.toLowerCase() === email);
-    if (!p || (await hashPassword(password, p.salt)) !== p.password_hash) throw new Error("Incorrect email or password.");
+    const p = this.findByIdentifier(identifier);
+    if (!p || (await hashPassword(password, p.salt)) !== p.password_hash) throw new Error("Incorrect email/mobile or password.");
     await this.completeLogin(p, remember, "Email + Password");
     return p;
   },
-  async sendOtp(kind, target) {
+  async signUp({ full_name, email, mobile, password }, remember) {
+    email = email.trim().toLowerCase(); mobile = normMobile(mobile); full_name = full_name.trim().replace(/\s+/g, " ");
     if (API.mode === "supabase") {
-      const { error } = kind === "email" ? await supabaseClient.auth.signInWithOtp({ email: target, options: { shouldCreateUser: false } })
-        : await supabaseClient.auth.signInWithOtp({ phone: "+91" + target, options: { shouldCreateUser: false } });
+      const { data, error } = await supabaseClient.auth.signUp({ email, password, options: { data: { full_name, mobile }, emailRedirectTo: absoluteUrl("login.html") } });
       if (error) throw new Error(error.message);
-      return null;
+      return { needsConfirmation: !data.session };
     }
     await API.latency(600);
-    const profile = this.profileFor(kind, target);
-    if (!profile) throw new Error(kind === "email" ? "No FPAA Connect account is registered with this email." : "No FPAA Connect account is linked to this mobile number.");
-    const code = String(Math.floor(100000 + Math.random() * 900000));
-    sessionStorage.setItem(OTP_KEY, JSON.stringify({ kind, target, code, exp: Date.now() + 5 * 60000, tries: 0 }));
-    return code;
+    if (API.find("profiles", (x) => x.email.toLowerCase() === email)) throw new Error("An account with this email already exists. Please sign in instead.");
+    if (API.find("profiles", (x) => this.profileMobile(x) === mobile)) throw new Error("This mobile number is already registered. Please sign in instead.");
+    const salt = randomToken(8);
+    const p = await API.insert("profiles", { email, full_name, mobile, role: "member", member_id: null, auth_method: "Email + Password", status: "Active", salt, password_hash: await hashPassword(password, salt), last_login: null });
+    // Auto-link an approved membership record when BOTH email and mobile match it.
+    const m = API.find("members", (x) => !x.user_id && (x.email || "").toLowerCase() === email && x.mobile === mobile);
+    if (m) { await API.update("members", m.id, { user_id: p.id }); await API.update("profiles", p.id, { member_id: m.id }); }
+    audit("Created account (sign up)", email);
+    notify(p.id, "membership", "Welcome to FPAA Connect", m ? `Your membership ${m.membership_no} is linked to this account.` : "Link your approved membership from My FPAA, or apply for membership.", "#my-fpaa");
+    await this.completeLogin(p, remember, "Email + Password");
+    return { needsConfirmation: false, linked: m ? m.membership_no : null };
   },
-  profileFor(kind, target) {
-    if (kind === "email") return API.find("profiles", (p) => p.email.toLowerCase() === target.toLowerCase());
-    const m = API.find("members", (x) => x.mobile === target && x.user_id);
-    return m ? API.get("profiles", m.user_id) : null;
-  },
-  async verifyOtp(kind, target, code, remember) {
+  failKey(id) { return "fpaa_reset_fail_" + String(id).toLowerCase(); },
+  async resetWithRecoveryKey(identifier, key, newPassword) {
+    key = String(key || "").trim().toUpperCase();
     if (API.mode === "supabase") {
-      const { error } = kind === "email" ? await supabaseClient.auth.verifyOtp({ email: target, token: code, type: "email" })
-        : await supabaseClient.auth.verifyOtp({ phone: "+91" + target, token: code, type: "sms" });
+      const { data, error } = await supabaseClient.rpc("reset_password_with_master_key", { p_identifier: identifier.trim().toLowerCase(), p_key: key, p_new_password: newPassword });
       if (error) throw new Error(error.message);
-      return true;
-    }
-    await API.latency(500);
-    const st = JSON.parse(sessionStorage.getItem(OTP_KEY) || "null");
-    if (!st || st.kind !== kind || st.target !== target) throw new Error("Please request a new OTP.");
-    if (Date.now() > st.exp) { sessionStorage.removeItem(OTP_KEY); throw new Error("This OTP has expired. Please request a new one."); }
-    if (st.tries >= 4) { sessionStorage.removeItem(OTP_KEY); throw new Error("Too many incorrect attempts. Please request a new OTP."); }
-    if (st.code !== code) { st.tries++; sessionStorage.setItem(OTP_KEY, JSON.stringify(st)); throw new Error("Incorrect OTP. Please check and try again."); }
-    sessionStorage.removeItem(OTP_KEY);
-    await this.completeLogin(this.profileFor(kind, target), remember, kind === "email" ? "Email OTP" : "Mobile OTP");
-    return true;
-  },
-  async forgot(email) {
-    if (API.mode === "supabase") {
-      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: absoluteUrl("login.html") });
-      if (error) throw new Error(error.message);
+      if (!data) throw new Error("The email/mobile or recovery key is incorrect.");
       return;
     }
-    await API.latency(700);
-    // Always respond the same way so the form cannot be used to discover registered emails.
+    await API.latency(600);
+    const lock = JSON.parse(localStorage.getItem(this.failKey(identifier)) || '{"n":0,"t":0}');
+    if (lock.n >= 5 && Date.now() - lock.t < 15 * 60000) throw new Error("Too many incorrect attempts. Please wait 15 minutes and try again.");
+    const p = this.findByIdentifier(identifier);
+    const expected = p ? this.recoveryKey(p.full_name, this.profileMobile(p)) : "";
+    if (!p || !expected || key !== expected) {
+      localStorage.setItem(this.failKey(identifier), JSON.stringify({ n: (lock.n >= 5 ? 0 : lock.n) + 1, t: Date.now() }));
+      throw new Error("The email/mobile or recovery key is incorrect.");
+    }
+    localStorage.removeItem(this.failKey(identifier));
+    const salt = randomToken(8);
+    await API.update("profiles", p.id, { salt, password_hash: await hashPassword(newPassword, salt) });
+    audit("Reset password with recovery key", p.email);
   },
   async logout() {
     try { if (API.mode === "supabase") await supabaseClient.auth.signOut(); } catch (e) { /* ignore */ }
@@ -1083,122 +1101,153 @@ const Auth = {
   }
 };
 
-/* ---------- Login page (login.html) ---------- */
+/* ---------- Sign in / Sign up page (login.html) ---------- */
+const vPassword = [(x) => !x || (x.length >= 8 && /[A-Za-z]/.test(x) && /\d/.test(x)), "Use at least 8 characters with letters and numbers."];
+function pwField({ label, name, placeholder = "", autocomplete = "current-password", hint = "" }) {
+  const id = "pw_" + name;
+  return h`<div class="field"><label for="${id}">${label} <span class="req">*</span></label><div class="pw-wrap"><input class="input" id="${id}" name="${name}" type="password" placeholder="${placeholder}" autocomplete="${autocomplete}"><button type="button" class="pw-toggle" data-action="pw-toggle" aria-label="Show password" title="Show password">${icon("eye")}</button></div>${hint ? h`<span class="hint">${hint}</span>` : ""}<span class="err"></span></div>`;
+}
 const LoginPage = {
-  view: "password", otpSent: null,
+  view: "signin", prefill: "",
   init() {
     const feats = [["users", "Alumni directory"], ["idcard", "Digital membership card"], ["briefcase", "Career & jobs"], ["school", "Falakata Alumni Scheme"]];
     setHTML($("#loginFeats"), feats.map((f) => h`<div>${icon(f[0])}${f[1]}</div>`));
     if (isSignedIn()) { this.redirect(); return; }
+    const q = new URLSearchParams(location.search).get("mode");
+    if (q === "signup" || location.hash === "#signup") this.view = "signup";
     this.render();
     document.addEventListener("click", (e) => this.onClick(e));
     document.addEventListener("submit", (e) => this.onSubmit(e));
+    document.addEventListener("input", (e) => { if (e.target.closest("#signupForm") && ["full_name", "mobile"].includes(e.target.name)) this.updateKeyPreview(); });
   },
   next() { const n = new URLSearchParams(location.search).get("next"); return n && /^[a-z-]+(\/[a-z-]+)?$/.test(n) ? n : null; },
   redirect() { const n = this.next(); location.href = "index.html#" + (n || (isAdmin() ? "admin" : "my-fpaa")); },
   demoBox() {
-    if (API.mode !== "demo") return "";
+    if (API.mode !== "demo" || this.view !== "signin") return "";
     const acc = [["member@fpaa.in", "Member@123", "Alumni Member"], ["newuser@fpaa.in", "Welcome@123", "New user (unlinked)"], ["admin@fpaa.in", "Admin@123", "Super Admin"], ["registration@fpaa.in", "Admin@123", "Registration"], ["finance@fpaa.in", "Admin@123", "Finance"], ["content@fpaa.in", "Admin@123", "Content Admin"], ["committee@fpaa.in", "Admin@123", "Committee"]];
     return h`<div class="demo-accounts"><b>${icon("key", "ico ico-sm")} Demo accounts</b> <span class="muted">— tap to fill (demo mode only)</span>
-      <div class="row">${acc.map((a) => h`<button type="button" class="chip gold" data-action="demo-fill" data-email="${a[0]}" data-pw="${a[1]}" title="${a[0]}">${a[2]}</button>`)}</div></div>`;
+      <div class="row">${acc.map((a) => h`<button type="button" class="chip gold" data-action="demo-fill" data-email="${a[0]}" data-pw="${a[1]}" title="${a[0]}">${a[2]}</button>`)}</div>
+      <div class="small muted" style="margin-top:8px">Demo recovery key for Alumni Member: <b class="mono">RAHU3206</b></div></div>`;
+  },
+  tabs() {
+    return h`<div class="tabs" role="tablist" aria-label="Sign in or sign up">${[["signin", "Sign in"], ["signup", "Sign up"]].map((t) => h`<button type="button" role="tab" aria-selected="${String(this.view === t[0])}" class="tab ${this.view === t[0] ? "active" : ""}" data-action="login-view" data-view="${t[0]}">${t[1]}</button>`)}</div>`;
+  },
+  head(title, sub) {
+    return h`<div class="row" style="gap:14px"><img src="${CONFIG.LOGO_URL}" alt="" style="width:52px;height:52px"><div><span class="eyebrow">FPAA Connect</span><h2 style="margin:2px 0 0">${title}</h2></div></div><p class="muted" style="margin:10px 0 0">${sub}</p>`;
   },
   render() {
     const card = $("#loginCard"); const v = this.view;
-    const head = h`<div class="row" style="gap:14px"><img src="${CONFIG.LOGO_URL}" alt="" style="width:52px;height:52px"><div><span class="eyebrow">FPAA Connect</span><h2 style="margin:2px 0 0">${v === "forgot" ? "Reset password" : "Welcome back"}</h2></div></div>
-      <p class="muted" style="margin:10px 0 0">${v === "forgot" ? "Enter your registered email and we will send you a secure password reset link." : "Sign in to access My FPAA, the alumni directory and member services."}</p>`;
+    document.title = (v === "signup" ? "Sign up" : v === "forgot" ? "Reset password" : "Sign in") + " — FPAA Connect";
+    const remember = h`<label class="check"><input type="checkbox" name="remember" checked> Remember me on this device</label>`;
     if (v === "forgot") {
-      setHTML(card, h`${head}<form id="forgotForm" class="stack" style="margin-top:18px" novalidate>
-        ${field({ label: "Registered email", name: "email", type: "email", required: true, placeholder: "you@example.com", attrs: 'autocomplete="email"' })}
-        <button class="btn btn-primary btn-block" type="submit">${icon("mail")}Send reset link</button>
-        <div class="form-msg" id="loginMsg"></div>
-        <button type="button" class="link-btn" data-action="login-view" data-view="password">${icon("arrowL", "ico ico-sm")} Back to sign in</button></form>`);
+      setHTML(card, h`${this.head("Reset password", "Enter your registered email or mobile and your recovery key, then choose a new password.")}
+        <div class="alert alert-info" style="margin-top:16px">${icon("key")}<div><b>Your recovery key</b>First 4 letters of your registered name in CAPITALS + last 4 digits of your registered mobile number.<br><span class="small">Example: Rahul Barman · 98765 43206 → <b class="mono">RAHU3206</b></span></div></div>
+        <form id="forgotForm" class="stack" style="margin-top:16px" novalidate>
+          ${field({ label: "Registered email or mobile", name: "identifier", required: true, value: this.prefill, placeholder: "you@example.com or 10-digit mobile", attrs: 'autocomplete="username"' })}
+          ${field({ label: "Recovery key", name: "recovery_key", required: true, placeholder: "RAHU3206", attrs: 'maxlength="8" autocomplete="off" style="text-transform:uppercase;letter-spacing:.12em;font-family:ui-monospace,Menlo,Consolas,monospace"' })}
+          ${pwField({ label: "New password", name: "new_password", placeholder: "At least 8 characters", autocomplete: "new-password", hint: "Use at least 8 characters with letters and numbers." })}
+          ${pwField({ label: "Confirm new password", name: "confirm_password", placeholder: "Re-enter new password", autocomplete: "new-password" })}
+          <button class="btn btn-primary btn-block" type="submit">${icon("key")}Reset password</button>
+          <div class="form-msg" id="loginMsg"></div>
+          <button type="button" class="link-btn" data-action="login-view" data-view="signin">${icon("arrowL", "ico ico-sm")} Back to sign in</button></form>`);
       return;
     }
-    const tabs = h`<div class="tabs" role="tablist">${[["password", "Password"], ["email-otp", "Email OTP"], ["mobile-otp", "Mobile OTP"]].map((t) => h`<button type="button" role="tab" aria-selected="${String(v === t[0])}" class="tab ${v === t[0] ? "active" : ""}" data-action="login-view" data-view="${t[0]}">${t[1]}</button>`)}</div>`;
-    const remember = h`<label class="check"><input type="checkbox" name="remember" checked> Remember me on this device</label>`;
-    let body;
-    if (v === "password") {
-      body = h`<form id="pwForm" class="stack" novalidate>
-        ${field({ label: "Email", name: "email", type: "email", required: true, placeholder: "you@example.com", attrs: 'autocomplete="username"' })}
-        <div class="field"><label for="pwInput">Password <span class="req">*</span></label><div class="pw-wrap"><input class="input" id="pwInput" name="password" type="password" placeholder="Your password" autocomplete="current-password"><button type="button" class="pw-toggle" data-action="pw-toggle" aria-label="Show password">${icon("eye")}</button></div><span class="err"></span></div>
+    if (v === "signup") {
+      setHTML(card, h`${this.head("Create your account", "Join FPAA Connect with your name, mobile number and email.")}${this.tabs()}
+        <form id="signupForm" class="stack" novalidate>
+          ${field({ label: "Full name", name: "full_name", required: true, placeholder: "As on your diploma certificate", attrs: 'autocomplete="name" maxlength="80"' })}
+          ${field({ label: "Mobile number", name: "mobile", type: "tel", required: true, placeholder: "10-digit mobile number", attrs: 'inputmode="numeric" maxlength="16" autocomplete="tel"' })}
+          ${field({ label: "Email", name: "email", type: "email", required: true, placeholder: "you@example.com", attrs: 'autocomplete="email"' })}
+          ${pwField({ label: "Create password", name: "password", placeholder: "At least 8 characters", autocomplete: "new-password", hint: "Use at least 8 characters with letters and numbers." })}
+          ${pwField({ label: "Confirm password", name: "confirm_password", placeholder: "Re-enter password", autocomplete: "new-password" })}
+          <div class="alert alert-warn" id="keyPreview">${icon("key")}<div><b>Your recovery key: <span class="mono" id="keyPreviewVal">—</span></b>First 4 letters of your name in CAPITALS + last 4 digits of your mobile. You will need it if you forget your password.</div></div>
+          ${remember}
+          <button class="btn btn-primary btn-block" type="submit">${icon("userPlus")}Create account</button>
+          <div class="form-msg" id="loginMsg"></div></form>
+        <p class="small muted" style="margin-top:16px;text-align:center">Already have an account? <button type="button" class="link-btn small" data-action="login-view" data-view="signin">Sign in</button></p>`);
+      return;
+    }
+    if (v === "welcome") {
+      const w = this.welcome || {};
+      setHTML(card, h`${this.head("Account created", "Welcome to FPAA Connect, " + (w.name || "") + ".")}
+        <div class="verify-card" style="margin-top:18px"><div class="row"><span class="ico-tile teal">${icon("check")}</span><div><span class="eyebrow">Save this safely</span><h3 style="margin:2px 0 0">Recovery key: <span class="mono">${w.key}</span></h3></div></div>
+          <p class="small" style="margin:12px 0 0">Use this key with <b>Forgot password</b> if you ever forget your password. It is made from the first 4 letters of your name and the last 4 digits of your mobile — do not share it.</p></div>
+        ${w.linked ? h`<div style="margin-top:14px">${alertBox("success", "Membership linked", "Your approved membership " + w.linked + " was found and linked automatically.")}</div>` : ""}
+        ${w.confirm ? h`<div style="margin-top:14px">${alertBox("info", "Confirm your email", "We sent a confirmation link to " + w.email + ". Open it, then sign in.")}</div>` : ""}
+        <button class="btn btn-primary btn-block" style="margin-top:18px" data-action="${w.confirm ? "login-view" : "welcome-continue"}" data-view="signin">${icon("login")}${w.confirm ? "Go to sign in" : "Continue to FPAA Connect"}</button>`);
+      return;
+    }
+    setHTML(card, h`${this.head("Welcome back", "Sign in to access My FPAA, the alumni directory and member services.")}${this.tabs()}
+      <form id="pwForm" class="stack" novalidate>
+        ${field({ label: "Email or mobile number", name: "email", required: true, value: this.prefill, placeholder: "you@example.com or 10-digit mobile", attrs: 'autocomplete="username"' })}
+        ${pwField({ label: "Password", name: "password", placeholder: "Your password" })}
         <div class="row-between">${remember}<button type="button" class="link-btn small" data-action="login-view" data-view="forgot">Forgot password?</button></div>
         <button class="btn btn-primary btn-block" type="submit">${icon("login")}Sign in</button>
-        <div class="form-msg" id="loginMsg"></div></form>`;
-    } else {
-      const isEmailOtp = v === "email-otp"; const sent = this.otpSent && this.otpSent.kind === (isEmailOtp ? "email" : "mobile");
-      body = h`<form id="otpForm" class="stack" novalidate data-kind="${isEmailOtp ? "email" : "mobile"}">
-        ${isEmailOtp ? field({ label: "Registered email", name: "target", type: "email", required: true, value: sent ? this.otpSent.target : "", placeholder: "you@example.com", attrs: 'autocomplete="email"' })
-        : field({ label: "Registered mobile", name: "target", type: "tel", required: true, value: sent ? this.otpSent.target : "", placeholder: "10-digit mobile number", hint: "Indian mobile number linked to your membership.", attrs: 'inputmode="numeric" maxlength="16" autocomplete="tel"' })}
-        ${sent ? h`<div class="field"><span class="field-label">Enter the 6-digit OTP</span><div class="otp-inputs">${[0, 1, 2, 3, 4, 5].map((i) => h`<input class="input" data-otp="${i}" inputmode="numeric" maxlength="1" aria-label="OTP digit ${i + 1}" autocomplete="one-time-code">`)}</div><span class="err" id="otpErr"></span></div>
-          ${remember}
-          <button class="btn btn-primary btn-block" type="submit" data-step="verify">${icon("shield")}Verify & sign in</button>
-          <button type="button" class="link-btn small" data-action="otp-resend">Resend OTP</button>`
-        : h`<button class="btn btn-primary btn-block" type="submit" data-step="send">${icon("send")}Send OTP</button>`}
-        <div class="form-msg" id="loginMsg"></div></form>`;
-    }
-    setHTML(card, h`${head}${tabs}${body}${this.demoBox()}
-      <p class="small muted" style="margin-top:16px;text-align:center">New alumni? <a href="index.html#membership">Apply for membership</a> · <a href="index.html#membership">Verify a membership</a></p>`);
-    if (v !== "password" && this.otpSent) this.bindOtpInputs();
+        <div class="form-msg" id="loginMsg"></div></form>
+      ${this.demoBox()}
+      <p class="small muted" style="margin-top:16px;text-align:center">New to FPAA Connect? <button type="button" class="link-btn small" data-action="login-view" data-view="signup">Create an account</button> · <a href="index.html#membership">Verify a membership</a></p>`);
   },
-  bindOtpInputs() {
-    const ins = $$("[data-otp]");
-    ins.forEach((inp, i) => {
-      inp.addEventListener("input", () => { inp.value = inp.value.replace(/\D/g, "").slice(0, 1); if (inp.value && ins[i + 1]) ins[i + 1].focus(); });
-      inp.addEventListener("keydown", (e) => { if (e.key === "Backspace" && !inp.value && ins[i - 1]) ins[i - 1].focus(); });
-      inp.addEventListener("paste", (e) => { const t = (e.clipboardData.getData("text") || "").replace(/\D/g, "").slice(0, 6); if (t.length) { e.preventDefault(); ins.forEach((x, k) => (x.value = t[k] || "")); (ins[Math.min(t.length, 5)]).focus(); } });
-    });
-    if (ins[0]) ins[0].focus();
+  updateKeyPreview() {
+    const f = $("#signupForm"); if (!f) return;
+    const k = Auth.recoveryKey(f.querySelector('[name="full_name"]').value, f.querySelector('[name="mobile"]').value);
+    $("#keyPreviewVal").textContent = k || "—";
   },
   onClick(e) {
     const b = e.target.closest("[data-action]"); if (!b) return;
     const a = b.dataset.action;
-    if (a === "login-view") { this.view = b.dataset.view; this.otpSent = null; this.render(); }
+    if (a === "login-view") { this.view = b.dataset.view; this.render(); const f = $("#loginCard input:not([type=checkbox])"); if (f && !f.value) f.focus(); }
+    if (a === "welcome-continue") this.redirect();
     if (a === "demo-fill") {
-      if (this.view !== "password") { this.view = "password"; this.render(); }
+      if (this.view !== "signin") { this.view = "signin"; this.render(); }
       $('#pwForm [name="email"]').value = b.dataset.email; $('#pwForm [name="password"]').value = b.dataset.pw;
       toast("info", "Demo credentials filled", "Press Sign in to continue.", 2500);
     }
-    if (a === "pw-toggle") { const i = $("#pwInput"); const show = i.type === "password"; i.type = show ? "text" : "password"; setHTML(b, icon(show ? "eyeOff" : "eye")); b.setAttribute("aria-label", show ? "Hide password" : "Show password"); }
-    if (a === "otp-resend") { const f = $("#otpForm"); this.sendOtp(f, b); }
-  },
-  async sendOtp(form, btn) {
-    const kind = form.dataset.kind; const msg = $("#loginMsg");
-    const v = validate(form, { target: [req(kind === "email" ? "Email is required." : "Mobile number is required."), kind === "email" ? vEmail : vMobile] });
-    if (!v) return;
-    const target = kind === "email" ? v.target.toLowerCase() : normMobile(v.target);
-    await busy(btn, "Sending…", async () => {
-      try {
-        const code = await Auth.sendOtp(kind, target);
-        this.otpSent = { kind, target }; this.render();
-        formMsg($("#loginMsg"), "success", "OTP sent", kind === "email" ? `Check ${target} for your one-time password.` : `An SMS has been sent to ${maskMobile(target)}.`);
-        if (code) toast("info", "Demo OTP: " + code, "In production this is delivered by " + (kind === "email" ? "email" : "SMS") + ". Valid for 5 minutes.", 12000);
-      } catch (err) { formMsg(msg, "error", "Could not send OTP", err.message); }
-    });
+    if (a === "pw-toggle") {
+      const i = b.parentElement.querySelector("input"); const show = i.type === "password";
+      i.type = show ? "text" : "password"; setHTML(b, icon(show ? "eyeOff" : "eye"));
+      b.setAttribute("aria-label", show ? "Hide password" : "Show password"); b.title = show ? "Hide password" : "Show password";
+    }
   },
   async onSubmit(e) {
     const form = e.target; e.preventDefault();
-    const btn = form.querySelector('button[type="submit"]'); const msg = $("#loginMsg", form) || $("#loginMsg");
+    const btn = form.querySelector('button[type="submit"]'); const msg = $("#loginMsg");
+    const vIdentifier = [(x) => !x || isEmail(x) || isMobile(x), "Enter a valid email address or 10-digit mobile number."];
     if (form.id === "pwForm") {
-      const v = validate(form, { email: [req("Email is required."), vEmail], password: [req("Password is required.")] });
+      const v = validate(form, { email: [req("Email or mobile is required."), vIdentifier], password: [req("Password is required.")] });
       if (!v) return;
       await busy(btn, "Signing in…", async () => {
         try { await Auth.loginPassword(v.email, v.password, v.remember); formMsg(msg, "success", "Signed in", "Redirecting to FPAA Connect…"); await Auth.restore(); setTimeout(() => this.redirect(), 400); }
         catch (err) { formMsg(msg, "error", "Sign in failed", err.message); }
       });
-    } else if (form.id === "otpForm") {
-      if (btn.dataset.step === "send") return this.sendOtp(form, btn);
-      const code = $$("[data-otp]", form).map((i) => i.value).join("");
-      if (!RX.otp.test(code)) { $("#otpErr").textContent = "Enter all 6 digits of the OTP."; return; }
-      const remember = form.querySelector('[name="remember"]').checked;
-      await busy(btn, "Verifying…", async () => {
-        try { await Auth.verifyOtp(this.otpSent.kind, this.otpSent.target, code, remember); formMsg(msg, "success", "Verified", "Redirecting…"); await Auth.restore(); setTimeout(() => this.redirect(), 400); }
-        catch (err) { formMsg(msg, "error", "Verification failed", err.message); }
+    } else if (form.id === "signupForm") {
+      const v = validate(form, {
+        full_name: [req("Full name is required."), [(x) => x.replace(/[^A-Za-z]/g, "").length >= 3, "Enter your full name (at least 3 letters)."]],
+        mobile: [req("Mobile number is required."), vMobile], email: [req("Email is required."), vEmail],
+        password: [req("Create a password."), vPassword], confirm_password: [req("Confirm your password."), [(x, all) => x === all.password, "Passwords do not match."]]
+      });
+      if (!v) return;
+      await busy(btn, "Creating account…", async () => {
+        try {
+          const r = await Auth.signUp(v, v.remember);
+          this.welcome = { name: v.full_name.split(" ")[0], key: Auth.recoveryKey(v.full_name, v.mobile), linked: r.linked, confirm: r.needsConfirmation, email: v.email };
+          if (!r.needsConfirmation) await Auth.restore();
+          this.view = "welcome"; this.render(); toast("success", "Account created", "Welcome to FPAA Connect.");
+        } catch (err) { formMsg(msg, "error", "Could not create account", err.message); }
       });
     } else if (form.id === "forgotForm") {
-      const v = validate(form, { email: [req("Email is required."), vEmail] }); if (!v) return;
-      await busy(btn, "Sending…", async () => {
-        try { await Auth.forgot(v.email); formMsg(msg, "success", "Check your inbox", "If an account exists for this email, a password reset link has been sent. The link expires in 60 minutes."); }
-        catch (err) { formMsg(msg, "error", "Could not send reset link", err.message); }
+      const v = validate(form, {
+        identifier: [req("Email or mobile is required."), vIdentifier],
+        recovery_key: [req("Recovery key is required."), [(x) => /^[A-Za-z]{1,4}\d{4}$/.test(x.trim()), "Recovery key is 4 letters followed by 4 digits, e.g. RAHU3206."]],
+        new_password: [req("Enter a new password."), vPassword], confirm_password: [req("Confirm the new password."), [(x, all) => x === all.new_password, "Passwords do not match."]]
+      });
+      if (!v) return;
+      await busy(btn, "Resetting…", async () => {
+        try {
+          await Auth.resetWithRecoveryKey(v.identifier, v.recovery_key, v.new_password);
+          this.prefill = v.identifier; this.view = "signin"; this.render();
+          formMsg($("#loginMsg"), "success", "Password reset", "Your password has been changed. Sign in with your new password.");
+          $('#pwForm [name="password"]').focus();
+        } catch (err) { formMsg(msg, "error", "Could not reset password", err.message); }
       });
     }
   }
@@ -1286,7 +1335,7 @@ const Nav = {
         <a class="user-chip" href="#my-fpaa" title="My FPAA">${avatar(S.profile.full_name, S.member && S.member.photo, "sm")}<span class="who"><b>${S.profile.full_name}</b><span>${ROLES[S.profile.role]}</span></span></a>
         <button class="icon-btn" data-action="logout" aria-label="Log out" title="Log out">${icon("logout")}</button>`;
     } else {
-      actions = h`<a class="btn btn-ghost btn-sm" href="#membership">${icon("idcard", "ico ico-sm")}<span>Join</span></a><a class="btn btn-primary btn-sm" href="login.html">${icon("login", "ico ico-sm")}Sign in</a>`;
+      actions = h`<a class="btn btn-ghost btn-sm" href="login.html?mode=signup">${icon("userPlus", "ico ico-sm")}<span>Sign up</span></a><a class="btn btn-primary btn-sm" href="login.html">${icon("login", "ico ico-sm")}Sign in</a>`;
     }
     setHTML($("#tbActions"), actions);
   },
@@ -1642,7 +1691,7 @@ const MyFPAA = {
   gate() {
     return h`<div class="glass gate reveal"><img src="${CONFIG.LOGO_URL}" alt="FPAA emblem"><span class="eyebrow">Members area</span><h2>Sign in to My FPAA</h2>
       <p>View your membership, print your certificate and membership card, track applications and donations, and access the alumni directory, jobs, events and more.</p>
-      <div class="btn-group" style="justify-content:center"><a class="btn btn-primary" href="login.html?next=my-fpaa">${icon("login")}Sign in</a><a class="btn btn-ghost" href="#membership">${icon("idcard")}Apply for membership</a><button class="btn btn-ghost" data-action="verify-open">${icon("shield")}Verify a membership</button></div></div>`;
+      <div class="btn-group" style="justify-content:center"><a class="btn btn-primary" href="login.html?next=my-fpaa">${icon("login")}Sign in</a><a class="btn btn-gold" href="login.html?mode=signup&next=my-fpaa">${icon("userPlus")}Create account</a><a class="btn btn-ghost" href="#membership">${icon("idcard")}Apply for membership</a><button class="btn btn-ghost" data-action="verify-open">${icon("shield")}Verify a membership</button></div></div>`;
   },
   hero() {
     const m = S.member, p = S.profile; const active = hasActiveMembership();
@@ -1685,7 +1734,7 @@ const MyFPAA = {
         ${this.infoCard("school", "teal", "Section C", "Academic Details", [["Institution", "Falakata Polytechnic"], ["Department", m.department], ["Admission Year", m.admission_year], ["Passing Year", m.passing_year]])}
         ${this.infoCard("briefcase", "gold", "Section D", "Professional Information", [["Current Profession", m.profession], ["Company / Organization", m.company]])}
         ${this.infoCard("pin", "", "Section E", "Address Information", [["City", m.city], ["State", m.state], ["PIN Code", m.pin], ["Address", m.address]])}
-        ${this.infoCard("key", "violet", "Section F", "Account Information", [["Account Status", S.member ? statusPill("Linked") : statusPill("Not linked")], ["Role", ROLES[p.role]], ["Authentication", p.last_auth_method || p.auth_method || "Email"], ["Last Login", p.last_login ? fmtDateTime(p.last_login) : "—"]])}
+        ${this.infoCard("key", "violet", "Section F", "Account Information", [["Account Status", S.member ? statusPill("Linked") : statusPill("Not linked")], ["Role", ROLES[p.role]], ["Authentication", "Email / mobile + password"], ["Recovery key", (Auth.recoveryKey(p.full_name, Auth.profileMobile(p)).slice(0, 4) || "—") + "••••"], ["Last Login", p.last_login ? fmtDateTime(p.last_login) : "—"]])}
       </div></section>`;
   },
   profileForm() {
@@ -1820,6 +1869,7 @@ Actions["profile-save"] = async (form) => {
       const inp = form.querySelector('input[name="photo"]');
       if (inp && inp.files && inp.files[0]) patch.photo = inp._dataUrl || (await readImageFile(inp.files[0], { maxW: 600 }));
       await API.update("members", S.member.id, patch);
+      if (S.profile.mobile !== patch.mobile) await API.update("profiles", S.profile.id, { mobile: patch.mobile });
       audit("Updated own profile", S.member.membership_no);
       formMsg(msg, "success", "Profile updated successfully.", "Your changes are saved to your membership record.");
       toast("success", "Profile updated successfully.");
@@ -3354,10 +3404,10 @@ Actions["adm-notif-delete"] = async (el) => { await API.remove("notifications", 
 AdminPanels.accounts = () => {
   const u = uiOf("aAcc", { sort: "new" });
   return h`<section class="glass card"><div class="card-head"><div><span class="eyebrow">${icon("userPlus", "ico ico-sm")} Super Admin</span><h3>Create alumni account</h3><p class="sub">Create a login, assign a role and optionally link an existing membership record.</p></div></div>
-      ${API.mode === "supabase" ? h`<div style="margin-bottom:14px">${alertBox("info", "Supabase mode", "Auth users must be created server-side (Edge Function or the Supabase dashboard). This form writes the profile and role; the user then signs in with Email OTP.")}</div>` : ""}
+      ${API.mode === "supabase" ? h`<div style="margin-bottom:14px">${alertBox("info", "Supabase mode", "Auth users must be created server-side (Edge Function or the Supabase dashboard). This form writes the profile and role; the member then signs up with the same email to set a password.")}</div>` : ""}
       <form data-submit="adm-acc-create" novalidate><div class="form-grid">
         ${field({ label: "Full name", name: "full_name", required: true, attrs: 'maxlength="80"' })}${field({ label: "Email (login)", name: "email", type: "email", required: true })}
-        ${field({ label: "Role", name: "role", options: Object.entries(ROLES).map(([k, l]) => ({ value: k, label: l })), value: "member" })}${field({ label: "Authentication", name: "auth_method", options: ["Email + Password", "Email OTP", "Mobile OTP"], value: "Email + Password" })}
+        ${field({ label: "Role", name: "role", options: Object.entries(ROLES).map(([k, l]) => ({ value: k, label: l })), value: "member" })}${field({ label: "Mobile number", name: "mobile", type: "tel", required: true, hint: "Used for the member's recovery key.", attrs: 'inputmode="numeric" maxlength="16"' })}
         ${field({ label: "Link membership no. (optional)", name: "membership_no", placeholder: "FPAA-M-2026-000001", attrs: 'style="text-transform:uppercase"' })}${field({ label: "Assign membership category", name: "category", options: CATEGORIES.map((c) => c.name), placeholder: "Keep current category" })}
       </div><div class="form-actions"><button class="btn btn-primary" type="submit">${icon("userPlus")}Create account</button></div><div class="form-msg" id="accMsg"></div></form></section>
     <section class="section">${admToolbar(h`${searchFilter("aAcc.q", u.q, "Search name, email…")}${selectFilter("aAcc.role", u.role, Object.entries(ROLES).map(([k, l]) => ({ value: k, label: l })), "All roles")}${selectFilter("aAcc.status", u.status, ["Active", "Disabled"], "All statuses")}<button class="btn btn-ghost btn-sm" data-action="clear-filters" data-group="aAcc">${icon("x", "ico ico-sm")}Clear</button>`)}
@@ -3374,24 +3424,24 @@ AdminLists.accounts = () => {
   ], slice, { wide: true, empty: "No accounts found." })}${pg}`;
 };
 function tempPassword() { const c = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"; let s = ""; const r = randomToken(12); for (let i = 0; i < 10; i++) s += c[parseInt(r.slice(i * 2, i * 2 + 2), 16) % c.length]; return s + "@1"; }
-function showTempPassword(email, pw) {
-  Modal.open({ title: "Temporary password", eyebrow: email, size: "sm", body: h`<p class="small muted">Share this password securely with the member. It is shown only once — ask them to sign in and change it.</p><div class="row" style="margin-top:10px"><code class="mono" style="font-size:1.1rem;padding:10px 14px;border-radius:10px;background:#fff;border:1px solid var(--line)">${pw}</code><button class="btn btn-ghost btn-sm" data-action="copy-text" data-text="${pw}">${icon("copy", "ico ico-sm")}Copy</button></div>`, foot: h`<button class="btn btn-primary" data-action="modal-close">Done</button>` });
+function showTempPassword(email, pw, key) {
+  Modal.open({ title: "Temporary password", eyebrow: email, size: "sm", body: h`<p class="small muted">Share this password securely with the member. It is shown only once — ask them to sign in and change it with Forgot password.</p><div class="row" style="margin-top:10px"><code class="mono" style="font-size:1.1rem;padding:10px 14px;border-radius:10px;background:#fff;border:1px solid var(--line)">${pw}</code><button class="btn btn-ghost btn-sm" data-action="copy-text" data-text="${pw}">${icon("copy", "ico ico-sm")}Copy</button></div>${key ? h`<p class="small" style="margin-top:12px">Recovery key: <b class="mono">${key}</b> (first 4 letters of name + last 4 digits of mobile)</p>` : ""}`, foot: h`<button class="btn btn-primary" data-action="modal-close">Done</button>` });
 }
 Actions["copy-text"] = (el) => copyText(el.dataset.text);
 Actions["adm-acc-create"] = async (form) => {
   if (!can("admin.accounts")) return toast("error", "Super Admin only");
-  const v = validate(form, { full_name: [req()], email: [req(), vEmail, [(x) => !API.find("profiles", (p) => p.email.toLowerCase() === x.toLowerCase()), "An account with this email already exists."]], membership_no: [[(x) => !x || RX.membership.test(normMembership(x)), "Use format FPAA-M-YYYY-NNNNNN."]] }); if (!v) return;
+  const v = validate(form, { full_name: [req()], email: [req(), vEmail, [(x) => !API.find("profiles", (p) => p.email.toLowerCase() === x.toLowerCase()), "An account with this email already exists."]], mobile: [req(), vMobile, [(x) => !API.find("profiles", (p) => Auth.profileMobile(p) === normMobile(x)), "This mobile number is already registered."]], membership_no: [[(x) => !x || RX.membership.test(normMembership(x)), "Use format FPAA-M-YYYY-NNNNNN."]] }); if (!v) return;
   let member = null;
   if (v.membership_no) { member = API.find("members", (m) => m.membership_no === normMembership(v.membership_no)); if (!member) return fieldError(form, "membership_no", "No membership with this number."); if (member.user_id) return fieldError(form, "membership_no", "Already linked to another account."); }
   await busy(form.querySelector('[type="submit"]'), "Creating…", async () => {
     try {
       const pw = tempPassword(); const salt = randomToken(8);
-      const p = await API.insert("profiles", { email: v.email.toLowerCase(), full_name: v.full_name, role: v.role, member_id: member ? member.id : null, auth_method: v.auth_method, status: "Active", salt, password_hash: API.mode === "demo" ? await hashPassword(pw, salt) : null, last_login: null });
+      const p = await API.insert("profiles", { email: v.email.toLowerCase(), full_name: v.full_name, mobile: normMobile(v.mobile), role: v.role, member_id: member ? member.id : null, auth_method: "Email + Password", status: "Active", salt, password_hash: API.mode === "demo" ? await hashPassword(pw, salt) : null, last_login: null });
       if (member) await API.update("members", member.id, Object.assign({ user_id: p.id }, v.category ? { category: v.category } : {}));
       if (v.role !== "member") await API.insert("committee_roles", { user_id: p.id, role: v.role, assigned_at: new Date().toISOString() });
       notify(p.id, "membership", "Welcome to FPAA Connect", member ? `Your account is linked to ${member.membership_no}.` : "Link your membership from My FPAA.", "#my-fpaa");
       audit("Created account", v.email); form.reset(); Filters.aAcc();
-      toast("success", "Account created", v.email); if (API.mode === "demo") showTempPassword(v.email, pw);
+      toast("success", "Account created", v.email); if (API.mode === "demo") showTempPassword(v.email, pw, Auth.recoveryKey(v.full_name, v.mobile));
     } catch (e) { formMsg($("#accMsg"), "error", "Could not create account.", e.message); }
   });
 };
@@ -3408,7 +3458,7 @@ Actions["adm-acc-role"] = (el) => {
 Actions["adm-acc-role-save"] = async (form) => { const p = API.get("profiles", form.dataset.id); const role = formValues(form).role; await API.update("profiles", p.id, { role }); const cr = API.find("committee_roles", (c) => c.user_id === p.id); if (role === "member" && cr) await API.remove("committee_roles", cr.id); else if (role !== "member") { if (cr) await API.update("committee_roles", cr.id, { role }); else await API.insert("committee_roles", { user_id: p.id, role, assigned_at: new Date().toISOString() }); } audit(`Changed role to ${ROLES[role]}`, p.email); Modal.close(); toast("success", "Role updated", `${p.full_name} → ${ROLES[role]}`); Admin.rerender(); };
 Actions["adm-acc-reset"] = async (el) => {
   const p = API.get("profiles", el.dataset.id);
-  if (API.mode === "supabase") { await Auth.forgot(p.email); toast("success", "Reset link sent", p.email); return; }
+  if (API.mode === "supabase") { toast("info", "Use the recovery key", `${p.full_name} can reset their password from Forgot password using their recovery key.`); return; }
   if (!(await confirmDialog({ title: "Reset password?", message: `A new temporary password will be generated for ${p.email}.`, confirmText: "Reset" }))) return;
   const pw = tempPassword(); await API.update("profiles", p.id, { password_hash: await hashPassword(pw, p.salt) }); audit("Reset password", p.email); showTempPassword(p.email, pw);
 };

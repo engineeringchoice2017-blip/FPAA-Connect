@@ -10,7 +10,7 @@ A single-page web application built with plain HTML5, CSS3 and vanilla JavaScrip
 | File | Purpose |
 |---|---|
 | `index.html` | Main application (Home, My FPAA, About, Directory, Membership, Career & Jobs, Events, Donations, Achievements, Memories, Falakata Alumni Scheme, Notices, Admin) |
-| `login.html` | Sign-in page — Email + Password, Email OTP, Mobile OTP, Forgot Password, Remember Me |
+| `login.html` | Sign in / Sign up page — email or mobile + password, show/hide password, Forgot Password with recovery key, Remember Me |
 | `style.css` | Design system — glassmorphism, neumorphism, responsive rules |
 | `script.js` | All application logic, organised in sections (AUTH, NAVIGATION, HOME, MY FPAA, … ADMIN, REPORTS, UTILITIES) |
 | `supabase-config.js` | Supabase URL + anon key, logo path, contact details |
@@ -32,7 +32,15 @@ A single-page web application built with plain HTML5, CSS3 and vanilla JavaScrip
 | Committee Member | `committee@fpaa.in` | `Admin@123` |
 
 To test membership linking, sign in as `newuser@fpaa.in` and link **FPAA-M-2024-000012** with mobile **9123456712**.
-In demo mode the OTP is shown on screen in a notification (instead of being sent by email/SMS).
+
+### Sign in, sign up & recovery key
+
+- **Sign up** asks for **full name, mobile number and email**, plus a password (min. 8 characters, letters + numbers). If the email and mobile both match an approved membership record, it is linked automatically.
+- **Sign in** with either the **email or the mobile number** and the password. Every password field has a show/hide (eye) button.
+- **Forgot password** uses the **recovery key** — the first 4 letters of the registered name in CAPITALS + the last 4 digits of the registered mobile. Example: Rahul Barman, 98765 43206 → `RAHU3206`. After 5 wrong keys the account is locked for 15 minutes.
+- Demo recovery key for `member@fpaa.in`: `RAHU3206`.
+
+> ⚠️ Security note: the recovery key is derived from a member's name and phone number, so anyone who knows both can reset that member's password. Consider adding an email/SMS confirmation later for stronger protection.
 Super Admin → Dashboard Overview → **Reset demo data** restores the original sample data.
 
 Demo data: 170 alumni (167 active, 3 inactive) across all five departments, plus applications, payments, donations, events, jobs, achievements, memories, notices, support tickets, scheme applications and chat. All names, emails and numbers are fictitious.
@@ -66,7 +74,7 @@ Notes:
 
 1. Create a project at <https://supabase.com>.
 2. Open **SQL Editor**, paste all of `schema.sql`, and run it.
-3. **Authentication → Providers:** enable *Email* (password + magic link/OTP). Enable *Phone* with an SMS provider (e.g. Twilio/MSG91) if you want Mobile OTP.
+3. **Authentication → Providers:** enable *Email* (password). Optionally turn off *Confirm email* so new members can sign in right after sign up. Forgot password uses the `reset_password_with_master_key` function from `schema.sql` — no email or SMS provider needed.
 4. **Authentication → URL Configuration:** add your site URL (e.g. `https://your-site.vercel.app`) and `…/login.html` as a redirect URL for password reset.
 5. **Project Settings → API:** copy the **Project URL** and the **anon public** key into `supabase-config.js`:
    ```js
@@ -81,9 +89,9 @@ Notes:
 7. Import your real members into the `members` table (Table Editor → Import CSV). Members link their account from **My FPAA → Link Your Membership** using membership number + registered mobile.
 
 What changes in Supabase mode:
-- Sign-in, OTP and password reset use Supabase Auth; sessions persist automatically.
+- Sign up / sign in use Supabase Auth (email + password; sign in with mobile via the `email_for_mobile` function). Recovery-key resets run in the database function `reset_password_with_master_key`.
 - All reads/writes go to your database; Row Level Security in `schema.sql` decides what each role can see. The public directory uses the masked `member_directory` view; public verification uses the `verify_membership()` function.
-- **Creating login accounts** (Super Admin → Create Alumni Accounts) needs the service role, which must never be in the browser. Create auth users in the Supabase dashboard (or via a Supabase Edge Function), then assign role/membership from the admin panel.
+- Members create their own login from the **Sign up** tab. Super Admin → Create Alumni Accounts prepares the profile/role; the member then signs up with the same email.
 - Photos are stored as compressed data URLs in the tables. For large galleries, switching uploads to **Supabase Storage** is recommended.
 
 ## 3. Deploying to GitHub

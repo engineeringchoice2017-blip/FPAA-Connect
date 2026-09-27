@@ -39,7 +39,7 @@ create table if not exists public.members (
 );
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  email text unique not null, full_name text,
+  email text unique not null, full_name text, mobile text unique,
   role text default 'member' check (role in ('member','committee','superadmin','registration','finance','content')),
   member_id uuid references public.members(id) on delete set null,
   auth_method text default 'Email', status text default 'Active', last_login timestamptz, last_auth_method text,
@@ -237,9 +237,61 @@ on conflict (id) do nothing;
 
 -- ---------- Keep profiles in sync with auth.users ----------
 create or replace function public.handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
-begin insert into public.profiles (id, email, full_name) values (new.id, new.email, coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email,'@',1))) on conflict (id) do nothing; return new; end; $$;
+begin
+  insert into public.profiles (id, email, full_name, mobile, auth_method)
+  values (new.id, new.email, coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email,'@',1)), nullif(new.raw_user_meta_data->>'mobile',''), 'Email + Password')
+  on conflict (id) do nothing;
+  -- auto-link an approved, unlinked membership when both email and mobile match
+  update public.members set user_id = new.id
+   where user_id is null and lower(email) = lower(new.email) and mobile = new.raw_user_meta_data->>'mobile';
+  update public.profiles p set member_id = m.id from public.members m where p.id = new.id and m.user_id = new.id;
+  return new;
+end; $$;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
 
 -- After creating your first user in Authentication → Users, promote them:
 -- update public.profiles set role = 'superadmin' where email = 'you@example.com';
+
+-- ---------- Sign in with mobile number ----------
+-- Returns the login email for a registered mobile (used only to sign in with mobile + password).
+create or replace function public.email_for_mobile(p_mobile text) returns text
+language sql stable security definer set search_path = public as $$
+  select p.email from public.profiles p left join public.members m on m.id = p.member_id
+   where coalesce(m.mobile, p.mobile) = right(regexp_replace(p_mobile, '\D', '', 'g'), 10) limit 1;
+$$;
+grant execute on function public.email_for_mobile(text) to anon, authenticated;
+
+-- ---------- Forgot password with recovery ("master") key ----------
+-- Key = first 4 letters of the registered name in CAPITALS + last 4 digits of the registered mobile.
+-- e.g. Rahul Barman, 9876543206 -> RAHU3206. Locks an account for 15 minutes after 5 wrong keys.
+create table if not exists public.password_reset_attempts (identifier text primary key, failures int default 0, last_at timestamptz default now());
+alter table public.password_reset_attempts enable row level security;  -- no policies: only the function below touches it
+
+create or replace function public.reset_password_with_master_key(p_identifier text, p_key text, p_new_password text)
+returns boolean language plpgsql security definer set search_path = public, auth, extensions as $$
+declare v_uid uuid; v_name text; v_mobile text; v_expected text; v_id text := lower(trim(p_identifier)); v_fail int; v_last timestamptz;
+begin
+  if length(p_new_password) < 8 or p_new_password !~ '[A-Za-z]' or p_new_password !~ '[0-9]' then
+    raise exception 'Use at least 8 characters with letters and numbers.';
+  end if;
+  select failures, last_at into v_fail, v_last from public.password_reset_attempts where identifier = v_id;
+  if coalesce(v_fail,0) >= 5 and v_last > now() - interval '15 minutes' then
+    raise exception 'Too many incorrect attempts. Please wait 15 minutes and try again.';
+  end if;
+  select p.id, p.full_name, coalesce(m.mobile, p.mobile) into v_uid, v_name, v_mobile
+    from public.profiles p left join public.members m on m.id = p.member_id
+   where lower(p.email) = v_id or coalesce(m.mobile, p.mobile) = right(regexp_replace(v_id, '\D', '', 'g'), 10)
+   limit 1;
+  v_expected := upper(left(regexp_replace(coalesce(v_name,''), '[^A-Za-z]', '', 'g'), 4)) || right(regexp_replace(coalesce(v_mobile,''), '\D', '', 'g'), 4);
+  if v_uid is null or length(v_expected) < 5 or upper(trim(p_key)) <> v_expected then
+    insert into public.password_reset_attempts(identifier, failures, last_at) values (v_id, 1, now())
+      on conflict (identifier) do update set failures = case when password_reset_attempts.last_at < now() - interval '15 minutes' then 1 else password_reset_attempts.failures + 1 end, last_at = now();
+    return false;
+  end if;
+  delete from public.password_reset_attempts where identifier = v_id;
+  update auth.users set encrypted_password = crypt(p_new_password, gen_salt('bf')), updated_at = now() where id = v_uid;
+  insert into public.audit_logs(actor, action, entity, entity_ref) values ('System', 'Reset password with recovery key', 'profile', v_uid::text);
+  return true;
+end; $$;
+grant execute on function public.reset_password_with_master_key(text, text, text) to anon, authenticated;
