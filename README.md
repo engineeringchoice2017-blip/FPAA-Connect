@@ -1,4 +1,4 @@
-# FPAA Connect
+# FPAA Connect 2.0
 
 **Official digital platform of Falakata Polytechnic Alumni Association (ESTD 2024)**
 *“Connecting the Past. Empowering the Present. Building the Future.”*
@@ -100,7 +100,7 @@ What changes in Supabase mode:
 cd fpaa-connect
 git init
 git add .
-git commit -m "FPAA Connect"
+git commit -m "FPAA Connect 2.0"
 git branch -M main
 git remote add origin https://github.com/<your-account>/fpaa-connect.git
 git push -u origin main

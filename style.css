@@ -1051,3 +1051,10 @@ body.chat-open .chat-window { opacity: 1; visibility: visible; transform: none; 
 .site-footer {
   background: linear-gradient(135deg, rgba(11, 33, 65, .96), rgba(21, 54, 95, .93) 55%, rgba(30, 74, 128, .90)), var(--campus) center 55% / cover no-repeat, #0B2141;
 }
+
+/* ---------- 26 VERSION BADGE (FPAA Connect 2.0) ---------- */
+.ver-badge { display: inline-block; vertical-align: middle; padding: .12em .42em; margin-left: .12em; border-radius: .35em;
+  font-size: .5em; font-weight: 800; letter-spacing: .02em; line-height: 1.15; color: #3A2A05; background: var(--grad-gold);
+  box-shadow: 0 .15em .5em rgba(215, 165, 43, .35); text-shadow: none; position: relative; top: -.12em; }
+.sb-brand .t1 { white-space: nowrap; }
+.sb-brand .t1 .ver-badge { font-size: .62em; }

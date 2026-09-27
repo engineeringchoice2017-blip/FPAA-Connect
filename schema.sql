@@ -1,5 +1,5 @@
 -- =====================================================================
--- FPAA Connect — Supabase schema
+-- FPAA Connect 2.0 — Supabase schema
 -- Falakata Polytechnic Alumni Association (ESTD 2024)
 -- Run this once in Supabase → SQL Editor. All IDs are UUIDs.
 -- Row Level Security is ENABLED on every table.

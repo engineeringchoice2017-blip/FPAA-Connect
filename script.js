@@ -1,5 +1,5 @@
 /* =====================================================================
-   FPAA CONNECT — Application Script
+   FPAA CONNECT 2.0 — Application Script
    Falakata Polytechnic Alumni Association (ESTD 2024)
    ---------------------------------------------------------------------
    Vanilla JS single-page application. Runs in DEMO MODE (localStorage)
@@ -744,7 +744,7 @@ async function buildSeed() {
     ["Minutes of the Executive Committee meeting", "General", "Normal", -33, "Minutes of the executive committee meeting held on campus are available for members.", "EC-Minutes.pdf"],
     ["Revised syllabus orientation for Electrical dept.", "Academic", "Normal", -47, "Alumni are invited to share industry feedback on the revised Electrical Engineering syllabus.", ""],
     ["Donation receipts for FY 2025–26 issued", "Finance", "Normal", -60, "Verified donors can view receipts under My FPAA → My Donations.", ""],
-    ["FPAA Connect platform launched", "General", "Normal", -100, "The official digital platform of Falakata Polytechnic Alumni Association is now live for all members.", ""]
+    ["FPAA Connect 2.0 platform launched", "General", "Normal", -100, "The official digital platform of Falakata Polytechnic Alumni Association is now live for all members.", ""]
   ];
   nts.forEach((n, i) => db.notices.push({ id: uuid(), notice_no: `FPAA/NOT/2026/${String(40 - i).padStart(3, "0")}`, title: n[0], category: n[1], priority: n[2], date: isoDay(daysFromNow(n[3])), description: n[4], attachment_name: n[5], attachment_data: null, status: "Published", created_at: daysFromNow(n[3]).toISOString() }));
 
@@ -1066,7 +1066,7 @@ const Auth = {
     const m = API.find("members", (x) => !x.user_id && (x.email || "").toLowerCase() === email && x.mobile === mobile);
     if (m) { await API.update("members", m.id, { user_id: p.id }); await API.update("profiles", p.id, { member_id: m.id }); }
     audit("Created account (sign up)", email);
-    notify(p.id, "membership", "Welcome to FPAA Connect", m ? `Your membership ${m.membership_no} is linked to this account.` : "Link your approved membership from My FPAA, or apply for membership.", "#my-fpaa");
+    notify(p.id, "membership", "Welcome to FPAA Connect 2.0", m ? `Your membership ${m.membership_no} is linked to this account.` : "Link your approved membership from My FPAA, or apply for membership.", "#my-fpaa");
     await this.completeLogin(p, remember, "Email + Password");
     return { needsConfirmation: false, linked: m ? m.membership_no : null };
   },
@@ -1133,11 +1133,11 @@ const LoginPage = {
     return h`<div class="tabs" role="tablist" aria-label="Sign in or sign up">${[["signin", "Sign in"], ["signup", "Sign up"]].map((t) => h`<button type="button" role="tab" aria-selected="${String(this.view === t[0])}" class="tab ${this.view === t[0] ? "active" : ""}" data-action="login-view" data-view="${t[0]}">${t[1]}</button>`)}</div>`;
   },
   head(title, sub) {
-    return h`<div class="row" style="gap:14px"><img src="${CONFIG.LOGO_URL}" alt="" style="width:52px;height:52px"><div><span class="eyebrow">FPAA Connect</span><h2 style="margin:2px 0 0">${title}</h2></div></div><p class="muted" style="margin:10px 0 0">${sub}</p>`;
+    return h`<div class="row" style="gap:14px"><img src="${CONFIG.LOGO_URL}" alt="" style="width:52px;height:52px"><div><span class="eyebrow">FPAA Connect 2.0</span><h2 style="margin:2px 0 0">${title}</h2></div></div><p class="muted" style="margin:10px 0 0">${sub}</p>`;
   },
   render() {
     const card = $("#loginCard"); const v = this.view;
-    document.title = (v === "signup" ? "Sign up" : v === "forgot" ? "Reset password" : "Sign in") + " — FPAA Connect";
+    document.title = (v === "signup" ? "Sign up" : v === "forgot" ? "Reset password" : "Sign in") + " — FPAA Connect 2.0";
     const remember = h`<label class="check"><input type="checkbox" name="remember" checked> Remember me on this device</label>`;
     if (v === "forgot") {
       setHTML(card, h`${this.head("Reset password", "Enter your registered email or mobile and your recovery key, then choose a new password.")}
@@ -1153,7 +1153,7 @@ const LoginPage = {
       return;
     }
     if (v === "signup") {
-      setHTML(card, h`${this.head("Create your account", "Join FPAA Connect with your name, mobile number and email.")}${this.tabs()}
+      setHTML(card, h`${this.head("Create your account", "Join FPAA Connect 2.0 with your name, mobile number and email.")}${this.tabs()}
         <form id="signupForm" class="stack" novalidate>
           ${field({ label: "Full name", name: "full_name", required: true, placeholder: "As on your diploma certificate", attrs: 'autocomplete="name" maxlength="80"' })}
           ${field({ label: "Mobile number", name: "mobile", type: "tel", required: true, placeholder: "10-digit mobile number", attrs: 'inputmode="numeric" maxlength="16" autocomplete="tel"' })}
@@ -1169,12 +1169,12 @@ const LoginPage = {
     }
     if (v === "welcome") {
       const w = this.welcome || {};
-      setHTML(card, h`${this.head("Account created", "Welcome to FPAA Connect, " + (w.name || "") + ".")}
+      setHTML(card, h`${this.head("Account created", "Welcome to FPAA Connect 2.0, " + (w.name || "") + ".")}
         <div class="verify-card" style="margin-top:18px"><div class="row"><span class="ico-tile teal">${icon("check")}</span><div><span class="eyebrow">Save this safely</span><h3 style="margin:2px 0 0">Recovery key: <span class="mono">${w.key}</span></h3></div></div>
           <p class="small" style="margin:12px 0 0">Use this key with <b>Forgot password</b> if you ever forget your password. It is made from the first 4 letters of your name and the last 4 digits of your mobile — do not share it.</p></div>
         ${w.linked ? h`<div style="margin-top:14px">${alertBox("success", "Membership linked", "Your approved membership " + w.linked + " was found and linked automatically.")}</div>` : ""}
         ${w.confirm ? h`<div style="margin-top:14px">${alertBox("info", "Confirm your email", "We sent a confirmation link to " + w.email + ". Open it, then sign in.")}</div>` : ""}
-        <button class="btn btn-primary btn-block" style="margin-top:18px" data-action="${w.confirm ? "login-view" : "welcome-continue"}" data-view="signin">${icon("login")}${w.confirm ? "Go to sign in" : "Continue to FPAA Connect"}</button>`);
+        <button class="btn btn-primary btn-block" style="margin-top:18px" data-action="${w.confirm ? "login-view" : "welcome-continue"}" data-view="signin">${icon("login")}${w.confirm ? "Go to sign in" : "Continue to FPAA Connect 2.0"}</button>`);
       return;
     }
     setHTML(card, h`${this.head("Welcome back", "Sign in to access My FPAA, the alumni directory and member services.")}${this.tabs()}
@@ -1185,7 +1185,7 @@ const LoginPage = {
         <button class="btn btn-primary btn-block" type="submit">${icon("login")}Sign in</button>
         <div class="form-msg" id="loginMsg"></div></form>
       ${this.demoBox()}
-      <p class="small muted" style="margin-top:16px;text-align:center">New to FPAA Connect? <button type="button" class="link-btn small" data-action="login-view" data-view="signup">Create an account</button> · <a href="index.html#membership">Verify a membership</a></p>`);
+      <p class="small muted" style="margin-top:16px;text-align:center">New to FPAA Connect 2.0? <button type="button" class="link-btn small" data-action="login-view" data-view="signup">Create an account</button> · <a href="index.html#membership">Verify a membership</a></p>`);
   },
   updateKeyPreview() {
     const f = $("#signupForm"); if (!f) return;
@@ -1216,7 +1216,7 @@ const LoginPage = {
       const v = validate(form, { email: [req("Email or mobile is required."), vIdentifier], password: [req("Password is required.")] });
       if (!v) return;
       await busy(btn, "Signing in…", async () => {
-        try { await Auth.loginPassword(v.email, v.password, v.remember); formMsg(msg, "success", "Signed in", "Redirecting to FPAA Connect…"); await Auth.restore(); setTimeout(() => this.redirect(), 400); }
+        try { await Auth.loginPassword(v.email, v.password, v.remember); formMsg(msg, "success", "Signed in", "Redirecting to FPAA Connect 2.0…"); await Auth.restore(); setTimeout(() => this.redirect(), 400); }
         catch (err) { formMsg(msg, "error", "Sign in failed", err.message); }
       });
     } else if (form.id === "signupForm") {
@@ -1231,7 +1231,7 @@ const LoginPage = {
           const r = await Auth.signUp(v, v.remember);
           this.welcome = { name: v.full_name.split(" ")[0], key: Auth.recoveryKey(v.full_name, v.mobile), linked: r.linked, confirm: r.needsConfirmation, email: v.email };
           if (!r.needsConfirmation) await Auth.restore();
-          this.view = "welcome"; this.render(); toast("success", "Account created", "Welcome to FPAA Connect.");
+          this.view = "welcome"; this.render(); toast("success", "Account created", "Welcome to FPAA Connect 2.0.");
         } catch (err) { formMsg(msg, "error", "Could not create account", err.message); }
       });
     } else if (form.id === "forgotForm") {
@@ -1343,18 +1343,18 @@ const Nav = {
     $$(".sb-link").forEach((a) => a.classList.toggle("active", a.dataset.route === S.route.name));
     const r = ROUTE_BY_ID[S.route.name];
     $("#tbName").textContent = r.label;
-    $("#tbCrumb").textContent = r.group === "Main" ? "FPAA Connect" : r.group;
-    document.title = r.label + " — FPAA Connect";
+    $("#tbCrumb").textContent = r.group === "Main" ? "FPAA Connect 2.0" : r.group;
+    document.title = r.label + " — FPAA Connect 2.0";
   },
   renderFooter() {
     setHTML($("#siteFooter"), h`<div class="ft-inner">
-        <div class="ft-brand"><img src="${CONFIG.LOGO_URL}" alt="FPAA emblem"><div><b>FALAKATA POLYTECHNIC ALUMNI ASSOCIATION</b><span class="fc">FPAA CONNECT</span><i>“Connecting the Past. Empowering the Present. Building the Future.”</i></div></div>
+        <div class="ft-brand"><img src="${CONFIG.LOGO_URL}" alt="FPAA emblem"><div><b>FALAKATA POLYTECHNIC ALUMNI ASSOCIATION</b><span class="fc">FPAA CONNECT 2.0</span><i>“Connecting the Past. Empowering the Present. Building the Future.”</i></div></div>
         <nav class="ft-links" aria-label="Footer">
           <button data-action="go" data-to="#about">About</button><button data-action="go" data-to="#membership">Membership</button>
           <button data-action="footer-contact">Contact</button><button data-action="go" data-to="#notices">Notices</button>
           <button data-action="footer-privacy">Privacy</button><button data-action="footer-terms">Terms</button>
         </nav></div>
-      <div class="ft-copy"><span>© ${new Date().getFullYear()} Falakata Polytechnic Alumni Association · ESTD 2024</span><span>${API.mode === "demo" ? "Demo mode — sample data only" : "Official FPAA Connect platform"}</span></div>`);
+      <div class="ft-copy"><span>© ${new Date().getFullYear()} Falakata Polytechnic Alumni Association · ESTD 2024</span><span>${API.mode === "demo" ? "Demo mode — sample data only" : "Official FPAA Connect 2.0 platform"}</span></div>`);
   },
   all() { this.renderSidebar(); this.renderTopbar(); this.renderFooter(); }
 };
@@ -1364,7 +1364,7 @@ Actions["nav-toggle"] = () => { const open = !document.body.classList.contains("
 Actions["nav-close"] = () => { document.body.classList.remove("nav-open"); $("#burgerBtn").setAttribute("aria-expanded", "false"); };
 Actions["go"] = (el) => { Modal.close(); Router.go(el.dataset.to); };
 Actions["modal-close"] = () => Modal.close();
-Actions["logout"] = async () => { if (await confirmDialog({ title: "Log out of FPAA Connect?", message: "You will need to sign in again to access member services.", confirmText: "Log out" })) Auth.logout(); };
+Actions["logout"] = async () => { if (await confirmDialog({ title: "Log out of FPAA Connect 2.0?", message: "You will need to sign in again to access member services.", confirmText: "Log out" })) Auth.logout(); };
 Actions["footer-contact"] = () => Modal.open({
   title: "Contact FPAA", eyebrow: "Falakata Polytechnic Alumni Association",
   body: h`<dl class="kv"><dt>Email</dt><dd>${CONFIG.CONTACT_EMAIL || "—"}</dd><dt>Phone</dt><dd>${CONFIG.CONTACT_PHONE || "—"}</dd><dt>Address</dt><dd>${CONFIG.CONTACT_ADDRESS || "—"}</dd><dt>Office hours</dt><dd>Mon – Sat, 10:00 AM – 5:00 PM</dd></dl>
@@ -1372,7 +1372,7 @@ Actions["footer-contact"] = () => Modal.open({
   foot: h`<button class="btn btn-ghost" data-action="modal-close">Close</button><button class="btn btn-primary" data-action="support-new">${icon("support")}New support request</button>`
 });
 Actions["footer-privacy"] = () => Modal.open({
-  title: "Privacy Policy", eyebrow: "FPAA Connect", size: "lg",
+  title: "Privacy Policy", eyebrow: "FPAA Connect 2.0", size: "lg",
   body: h`<div class="stack small">
     <p><b>What we collect.</b> Name, email, mobile number, department, admission and passing year, profession, organisation, address and an optional profile photo — only to administer FPAA membership and alumni services.</p>
     <p><b>Who can see it.</b> Your full profile is private. The alumni directory shows only name, department, profession, organisation, passing year and a masked mobile number (e.g. 987654****). Full mobile numbers are visible only to the Registration Committee and Super Admin.</p>
@@ -1383,9 +1383,9 @@ Actions["footer-privacy"] = () => Modal.open({
   foot: h`<button class="btn btn-primary" data-action="modal-close">I understand</button>`
 });
 Actions["footer-terms"] = () => Modal.open({
-  title: "Terms of Use", eyebrow: "FPAA Connect", size: "lg",
+  title: "Terms of Use", eyebrow: "FPAA Connect 2.0", size: "lg",
   body: h`<div class="stack small">
-    <p>FPAA Connect is the official platform of Falakata Polytechnic Alumni Association (ESTD 2024). By using it you agree to:</p>
+    <p>FPAA Connect 2.0 is the official platform of Falakata Polytechnic Alumni Association (ESTD 2024). By using it you agree to:</p>
     <ol style="padding-left:18px;margin:0;display:grid;gap:8px">
       <li>Provide accurate information in membership, scheme and donation forms.</li>
       <li>Use alumni contact details only for association and professional purposes — never for spam, marketing or harassment.</li>
@@ -1403,7 +1403,7 @@ function bindGlobalEvents() {
     const el = e.target.closest("[data-action]");
     if (!el || el.disabled) return;
     const fn = Actions[el.dataset.action];
-    if (!fn) { console.error("FPAA Connect: no handler for action", el.dataset.action); return; }
+    if (!fn) { console.error("FPAA Connect 2.0: no handler for action", el.dataset.action); return; }
     if (el.tagName === "A" || el.type === "submit") e.preventDefault();
     try { const r = fn(el, e); if (r && r.catch) r.catch((err) => { console.error(err); toast("error", "Something went wrong", err.message); }); }
     catch (err) { console.error(err); toast("error", "Something went wrong", err.message); }
@@ -1422,7 +1422,7 @@ function bindGlobalEvents() {
     const form = e.target.closest("form[data-submit]"); if (!form) return;
     e.preventDefault();
     const fn = Actions[form.dataset.submit];
-    if (!fn) { console.error("FPAA Connect: no submit handler", form.dataset.submit); return; }
+    if (!fn) { console.error("FPAA Connect 2.0: no submit handler", form.dataset.submit); return; }
     const r = fn(form, e); if (r && r.catch) r.catch((err) => { console.error(err); toast("error", "Something went wrong", err.message); });
   });
   document.addEventListener("keydown", (e) => {
@@ -1572,12 +1572,12 @@ Views.home = () => {
   const feed = Home.feed();
   const stat = (ic, tone, label, value, sub, d) => h`<div class="glass stat-card card-lift reveal" style="animation-delay:${d}ms"><span class="ico-tile ${tone}">${icon(ic)}</span><div class="sc-body"><div class="sc-label">${label}</div><div class="sc-value">${value}</div><div class="sc-sub">${sub}</div></div></div>`;
   return h`
-  <section class="home-hero reveal" aria-label="FPAA Connect">
+  <section class="home-hero reveal" aria-label="FPAA Connect 2.0">
     <div class="hero-lines"></div><div class="float-ring fr-1"></div><div class="float-ring fr-2"></div><span class="photo-credit">${icon("pin", "ico ico-sm")}Falakata Polytechnic campus</span>
     <div class="hero-main">
       <div class="hero-emblem" id="heroEmblem"><img src="${CONFIG.LOGO_URL}" alt="FPAA emblem — Falakata Polytechnic Alumni Association, ESTD 2024"></div>
       <div class="hero-copy"><span class="eyebrow">${icon("sparkles", "ico ico-sm")} Falakata Polytechnic Alumni Association · ESTD 2024</span>
-        <h1>FPAA CONNECT</h1>
+        <h1>FPAA <span class="nowrap">CONNECT <span class="ver-badge">2.0</span></span></h1>
         <p class="tagline">“Connecting the Past. Empowering the Present. Building the Future.”</p>
         <div class="btn-group">
           <a class="btn btn-gold" href="#membership">${icon("idcard")}Apply for Membership</a>
@@ -1594,7 +1594,7 @@ Views.home = () => {
   </section>
 
   <div class="stat-grid">
-    ${stat("users", "", "Total Alumni", fmtNum(ms.length), "Registered in FPAA Connect", 0)}
+    ${stat("users", "", "Total Alumni", fmtNum(ms.length), "Registered in FPAA Connect 2.0", 0)}
     ${stat("shield", "teal", "Active Members", fmtNum(active), `${fmtNum(ms.length - active)} inactive`, 60)}
     ${stat("building", "violet", "Departments", DEPARTMENTS.length, "Electronics · Civil · Mechanical · Electrical · FPT", 120)}
     ${stat("calendar", "", "Pass-out Years", years.length, years.length ? `${years[0]} – ${years[years.length - 1]}` : "—", 180)}
@@ -1604,7 +1604,7 @@ Views.home = () => {
 
   <div class="home-split">
     <section class="glass card reveal" aria-label="Live gallery">
-      <div class="live-bar"><span class="lb-tag"><span class="live-dot"></span>LIVE UPDATE</span><span class="lb-text" id="liveTicker" style="transition:opacity .25s">FPAA Connect Community Updates${feed[0] ? " — " + feed[0].title : ""}</span></div>
+      <div class="live-bar"><span class="lb-tag"><span class="live-dot"></span>LIVE UPDATE</span><span class="lb-text" id="liveTicker" style="transition:opacity .25s">FPAA Connect 2.0 Community Updates${feed[0] ? " — " + feed[0].title : ""}</span></div>
       ${Home.gallery()}
     </section>
     <section class="glass card reveal" aria-label="Live feed">
@@ -1647,13 +1647,13 @@ Actions["gallery-go"] = (el) => Home.showSlide(Number(el.dataset.i));
 Actions["ppt-export"] = (el) => busy(el, "Preparing PPT…", async () => {
   try { await loadScript("https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"); }
   catch (e) { toast("error", "Could not build the PPT", "The presentation library needs an internet connection. Please try again when online."); return; }
-  const pptx = new window.PptxGenJS(); pptx.layout = "LAYOUT_WIDE"; pptx.title = "FPAA Connect Dashboard";
+  const pptx = new window.PptxGenJS(); pptx.layout = "LAYOUT_WIDE"; pptx.title = "FPAA Connect 2.0 Dashboard";
   const NAVY = "15365F", BLUE = "3B82F6", GOLD = "D7A52B";
   const logo = await fetch(absoluteUrl(CONFIG.LOGO_URL)).then((r) => r.blob()).then((bl) => new Promise((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.onerror = () => res(null); fr.readAsDataURL(bl); })).catch(() => null);
   const ms = Stats.members(); const active = ms.filter((m) => m.status === "Active").length;
   const s1 = pptx.addSlide(); s1.background = { color: NAVY };
   if (logo) s1.addImage({ data: logo, x: 0.6, y: 1.3, w: 2.6, h: 2.6 });
-  s1.addText("FPAA CONNECT", { x: 3.6, y: 1.5, w: 9, h: 0.9, fontSize: 44, bold: true, color: "FFFFFF", fontFace: "Arial" });
+  s1.addText("FPAA CONNECT 2.0", { x: 3.6, y: 1.5, w: 9, h: 0.9, fontSize: 44, bold: true, color: "FFFFFF", fontFace: "Arial" });
   s1.addText("Falakata Polytechnic Alumni Association · ESTD 2024", { x: 3.6, y: 2.4, w: 9, h: 0.5, fontSize: 18, color: GOLD, bold: true });
   s1.addText("Connecting the Past. Empowering the Present. Building the Future.", { x: 3.6, y: 3.0, w: 9, h: 0.5, fontSize: 16, color: "DCE8FF", italic: true });
   s1.addText("Dashboard report · " + fmtDate(new Date()), { x: 3.6, y: 4.2, w: 9, h: 0.4, fontSize: 12, color: "BFD6FF" });
@@ -1763,7 +1763,7 @@ const MyFPAA = {
     const m = S.member; const active = hasActiveMembership();
     return h`<section class="glass card reveal" aria-label="Membership details"><div class="card-head"><div><span class="eyebrow">${icon("idcard", "ico ico-sm")} Membership</span><h3>Membership Details</h3><p class="sub">Your digital membership card and printable documents.</p></div>${m ? statusPill(m.status) : ""}</div>
       ${m ? h`<div class="member-mini-card" aria-label="Membership card preview">
-          <div class="mc-top"><img src="${CONFIG.LOGO_URL}" alt=""><div><b>FALAKATA POLYTECHNIC<br>ALUMNI ASSOCIATION</b><span>FPAA CONNECT · MEMBER</span></div></div>
+          <div class="mc-top"><img src="${CONFIG.LOGO_URL}" alt=""><div><b>FALAKATA POLYTECHNIC<br>ALUMNI ASSOCIATION</b><span>FPAA CONNECT 2.0 · MEMBER</span></div></div>
           <div><div class="chipline"></div></div>
           <div><div class="mc-name">${m.full_name}</div><div class="mc-no">${m.membership_no}</div></div>
           <div class="mc-foot"><span>Category<b>${m.category.replace(" Membership", "")}</b></span><span>Dept.<b>${m.department === "Food Processing Technology" ? "Food Proc. Tech." : m.department}</b></span><span>Valid till<b>${m.valid_till}</b></span></div></div>
@@ -1844,7 +1844,7 @@ Actions["link-membership"] = async (form) => {
     const m = API.find("members", (x) => x.membership_no === no);
     const fail = (detail) => formMsg(msg, "error", "Membership could not be linked.", detail);
     if (!m) return fail("Please check your membership number and registered mobile.");
-    if (m.user_id && m.user_id !== S.profile.id) return fail("This membership is already linked to another FPAA Connect account. Raise a support request if you believe this is a mistake.");
+    if (m.user_id && m.user_id !== S.profile.id) return fail("This membership is already linked to another FPAA Connect 2.0 account. Raise a support request if you believe this is a mistake.");
     if (m.mobile !== mob) return fail("Please check your membership number and registered mobile.");
     if (S.member) return fail("Your account is already linked to " + S.member.membership_no + ".");
     try {
@@ -1906,7 +1906,7 @@ const Certificates = {
       .sig div.seal{width:24mm;height:24mm;border-top:0;padding:0;border-radius:50%;background:radial-gradient(circle,#FFE7A3,#D7A52B 60%,#9C7414);display:grid;place-items:center;color:#3A2A05;font:800 8pt Arial;letter-spacing:.08em;box-shadow:0 0 0 2mm rgba(215,165,43,.25)}
       .ver{position:absolute;bottom:5mm;left:0;right:0;font-size:7.5pt;color:#8394AB}`;
     const html = `<div class="page"><div class="frame"><img class="wm" src="${esc(this.logo())}" alt=""><img class="logo" src="${esc(this.logo())}" alt="FPAA emblem">
-      <div class="org">FALAKATA POLYTECHNIC ALUMNI ASSOCIATION</div><div class="est">ESTD 2024 · FPAA CONNECT</div>
+      <div class="org">FALAKATA POLYTECHNIC ALUMNI ASSOCIATION</div><div class="est">ESTD 2024 · FPAA CONNECT 2.0</div>
       <h1>Certificate of Membership</h1><div class="sub">This is to certify that</div><div class="name">${esc(m.full_name)}</div>
       <div class="body">an alumnus/alumna of the <b>${esc(m.department)}</b> department (Batch ${esc(m.admission_year)}–${esc(m.passing_year)}) of Falakata Polytechnic, is a registered member of the <b>Falakata Polytechnic Alumni Association</b> under the category <b>${esc(m.category)}</b>, and is entitled to all rights and privileges of membership.</div>
       <div class="meta"><div><span>Membership No.</span><b>${esc(m.membership_no)}</b></div><div><span>Member Since</span><b>${esc(m.member_since)}</b></div><div><span>Valid Till</span><b>${esc(m.valid_till)}</b></div><div><span>Issued On</span><b>${esc(fmtDate(new Date()))}</b></div></div>
@@ -1930,10 +1930,10 @@ const Certificates = {
       .back .v{position:absolute;left:4mm;right:4mm;bottom:3mm;font-size:4.8pt;color:#5B6B82;word-break:break-all}.back .sg{position:absolute;right:4mm;bottom:9mm;width:26mm;border-top:.3mm solid #15365F;font-size:5pt;text-align:center;padding-top:.8mm;color:#29466B}
       .stripe{height:6mm;margin:-4mm -4mm 3mm;background:linear-gradient(90deg,#15365F,#3B82F6,#D7A52B)}`;
     const html = `<h2>FPAA Membership Card — ${esc(m.membership_no)}</h2><p>Print on card stock at 100% scale (CR80 size 85.6 × 54 mm). Cut along the edges and laminate.</p><div class="wrap">
-      <div class="card"><div class="top"><img src="${esc(this.logo())}" alt=""><div><b>FALAKATA POLYTECHNIC<br>ALUMNI ASSOCIATION</b><span>FPAA CONNECT · ESTD 2024</span></div></div>
+      <div class="card"><div class="top"><img src="${esc(this.logo())}" alt=""><div><b>FALAKATA POLYTECHNIC<br>ALUMNI ASSOCIATION</b><span>FPAA CONNECT 2.0 · ESTD 2024</span></div></div>
         <div class="mid"><div class="ph">${photo}</div><div><div class="nm">${esc(m.full_name)}</div><div class="no">${esc(m.membership_no)}</div><div class="cat">${esc(m.category.toUpperCase())}</div></div></div>
         <div class="ft"><span>Department<b>${esc(m.department)}</b></span><span>Batch<b>${esc(m.passing_year)}</b></span><span>Valid till<b>${esc(m.valid_till)}</b></span></div></div>
-      <div class="card back"><div class="stripe"></div><div class="t">MEMBER PRIVILEGES</div><ul><li>Access to FPAA Connect member services</li><li>Alumni directory, events and career network</li><li>Eligible to vote in FPAA general meetings</li><li>This card is the property of FPAA and non-transferable</li></ul>
+      <div class="card back"><div class="stripe"></div><div class="t">MEMBER PRIVILEGES</div><ul><li>Access to FPAA Connect 2.0 member services</li><li>Alumni directory, events and career network</li><li>Eligible to vote in FPAA general meetings</li><li>This card is the property of FPAA and non-transferable</li></ul>
         <div class="sg">General Secretary</div><div class="v">Verify: ${esc(verify)}</div></div></div>`;
     printHTML("FPAA Membership Card — " + m.membership_no, html, css);
     audit("Printed membership card", m.membership_no); toast("info", "Opening print dialog…", "Print at 100% scale for the correct card size.");
@@ -2352,7 +2352,7 @@ Actions["donation-view"] = (el) => {
 Actions["donation-receipt"] = (el) => {
   const d = API.get("donations", el.dataset.id); if (!d || d.status !== "Verified") return;
   const css = `@page{size:A5 landscape;margin:12mm}body{font-family:Inter,Arial,sans-serif;color:#0F2744;margin:0}.r{border:2px solid #15365F;border-radius:10px;padding:10mm;position:relative}.h{display:flex;gap:5mm;align-items:center;border-bottom:1px solid #D7A52B;padding-bottom:4mm}.h img{width:18mm}.h b{font:800 12pt Manrope,Arial;display:block;color:#15365F}.h span{font-size:8pt;color:#5B6B82;letter-spacing:.1em}h2{font:800 14pt Manrope,Arial;margin:5mm 0 3mm}table{width:100%;border-collapse:collapse;font-size:10pt}td{padding:2mm 0;border-bottom:1px dashed #DCE3F0}td:first-child{color:#5B6B82;width:40%}.amt{font:800 16pt Manrope,Arial;color:#15365F}.f{margin-top:6mm;font-size:8pt;color:#5B6B82;display:flex;justify-content:space-between}`;
-  printHTML("Donation receipt " + d.donation_no, `<div class="r"><div class="h"><img src="${esc(Certificates.logo())}" alt=""><div><b>FALAKATA POLYTECHNIC ALUMNI ASSOCIATION</b><span>FPAA CONNECT · DONATION RECEIPT</span></div></div><h2>Receipt ${esc(d.donation_no)}</h2>
+  printHTML("Donation receipt " + d.donation_no, `<div class="r"><div class="h"><img src="${esc(Certificates.logo())}" alt=""><div><b>FALAKATA POLYTECHNIC ALUMNI ASSOCIATION</b><span>FPAA CONNECT 2.0 · DONATION RECEIPT</span></div></div><h2>Receipt ${esc(d.donation_no)}</h2>
     <table><tr><td>Received from</td><td><b>${esc(d.donor_name)}</b></td></tr><tr><td>Purpose</td><td>${esc(d.purpose)}</td></tr><tr><td>Amount</td><td class="amt">${esc(fmtINR(d.amount))}</td></tr><tr><td>Payment</td><td>${esc(d.payment_mode || "")} · ${esc(d.payment_ref || "")}</td></tr><tr><td>Date</td><td>${esc(fmtDate(d.donated_at))}</td></tr><tr><td>Status</td><td>Verified by Finance Committee</td></tr></table>
     <div class="f"><span>Thank you for supporting FPAA.</span><span>Generated ${esc(fmtDate(new Date()))}</span></div></div>`, css);
 };
@@ -2592,7 +2592,7 @@ Actions["notice-download"] = (el) => {
   const n = API.get("notices", el.dataset.id); if (!n) return;
   if (n.attachment_data) { downloadDataUrl(n.attachment_name || n.notice_no + ".pdf", n.attachment_data); toast("success", "Download started", n.attachment_name); return; }
   const doc = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(n.notice_no)}</title><style>body{font-family:Arial,sans-serif;max-width:720px;margin:40px auto;color:#0F2744;line-height:1.6}header{display:flex;gap:16px;align-items:center;border-bottom:3px solid #D7A52B;padding-bottom:12px}header b{font-size:18px;color:#15365F;display:block}header span{font-size:12px;letter-spacing:.12em;color:#5B6B82}.meta{display:flex;justify-content:space-between;margin:18px 0;font-size:14px}h1{font-size:22px;color:#15365F}footer{margin-top:60px;text-align:right}</style></head><body>
-    <header><img src="${esc(absoluteUrl(CONFIG.LOGO_URL))}" width="64" height="64" alt=""><div><b>FALAKATA POLYTECHNIC ALUMNI ASSOCIATION</b><span>ESTD 2024 · FPAA CONNECT</span></div></header>
+    <header><img src="${esc(absoluteUrl(CONFIG.LOGO_URL))}" width="64" height="64" alt=""><div><b>FALAKATA POLYTECHNIC ALUMNI ASSOCIATION</b><span>ESTD 2024 · FPAA CONNECT 2.0</span></div></header>
     <div class="meta"><span>Notice No.: <b>${esc(n.notice_no)}</b></span><span>Date: <b>${esc(fmtDate(n.date))}</b></span></div><h1>${esc(n.title)}</h1><p>${esc(n.description).replace(/\n/g, "<br>")}</p>${n.attachment_name ? `<p><i>Referenced attachment: ${esc(n.attachment_name)}</i></p>` : ""}<footer>General Secretary<br>Falakata Polytechnic Alumni Association</footer></body></html>`;
   downloadBlob(`${n.notice_no.replace(/\//g, "-")}.html`, doc, "text/html"); toast("success", "Notice downloaded", "Open the file and print or save as PDF.");
 };
@@ -2613,7 +2613,7 @@ Views.about = () => {
   ];
   let body;
   if (tab === "about") body = h`<h2>Falakata Polytechnic Alumni Association (FPAA)</h2>
-    <p>Established in 2024, the Falakata Polytechnic Alumni Association brings together the pass-out students of Falakata Polytechnic, Alipurduar, West Bengal, into one organised and verified community. FPAA Connect is the association's official digital platform — the single place for membership, the alumni directory, careers, events, donations, scholarships and member services.</p>
+    <p>Established in 2024, the Falakata Polytechnic Alumni Association brings together the pass-out students of Falakata Polytechnic, Alipurduar, West Bengal, into one organised and verified community. FPAA Connect 2.0 is the association's official digital platform — the single place for membership, the alumni directory, careers, events, donations, scholarships and member services.</p>
     <p>Our members work in government departments, private industry, their own enterprises and higher education institutions across India. Together we give back to the institution that shaped us and to the students who follow.</p>
     <div class="pillar-grid">${pillars.map((p) => h`<div class="pillar"><span class="ico-tile ${p[1]}">${icon(p[0])}</span><h4>${p[2]}</h4><p>${p[3]}</p></div>`)}</div>`;
   else if (tab === "vision") body = h`<h2>Our Vision</h2><p class="about-quote" style="font:700 1.15rem var(--font-head);color:var(--indigo)">To build a strong, lifelong and purposeful alumni community that connects the past, empowers the present and builds the future of Falakata Polytechnic and its students.</p>
@@ -3055,7 +3055,7 @@ AdminLists.members = () => {
 };
 Actions["adm-member-preview"] = (el) => {
   const m = API.get("members", el.dataset.id); if (!m) return;
-  Modal.open({ title: "Membership card preview", eyebrow: m.membership_no, body: h`<div class="member-mini-card"><div class="mc-top"><img src="${CONFIG.LOGO_URL}" alt=""><div><b>FALAKATA POLYTECHNIC<br>ALUMNI ASSOCIATION</b><span>FPAA CONNECT · MEMBER</span></div></div><div><div class="chipline"></div></div><div><div class="mc-name">${m.full_name}</div><div class="mc-no">${m.membership_no}</div></div><div class="mc-foot"><span>Category<b>${m.category.replace(" Membership", "")}</b></span><span>Batch<b>${m.passing_year}</b></span><span>Valid till<b>${m.valid_till}</b></span></div></div>
+  Modal.open({ title: "Membership card preview", eyebrow: m.membership_no, body: h`<div class="member-mini-card"><div class="mc-top"><img src="${CONFIG.LOGO_URL}" alt=""><div><b>FALAKATA POLYTECHNIC<br>ALUMNI ASSOCIATION</b><span>FPAA CONNECT 2.0 · MEMBER</span></div></div><div><div class="chipline"></div></div><div><div class="mc-name">${m.full_name}</div><div class="mc-no">${m.membership_no}</div></div><div class="mc-foot"><span>Category<b>${m.category.replace(" Membership", "")}</b></span><span>Batch<b>${m.passing_year}</b></span><span>Valid till<b>${m.valid_till}</b></span></div></div>
     <div style="margin-top:14px" class="row">${statusPill(m.status)}<span class="small muted">Certificate and card can be printed only for active members.</span></div>`,
     foot: h`<button class="btn btn-ghost" data-action="modal-close">Close</button>${ab("print-certificate", m.id, "Print Certificate", "certificate", "btn-primary", m.status === "Active" ? "" : "disabled")}${ab("print-card", m.id, "Print Membership Card", "printer", "btn-gold", m.status === "Active" ? "" : "disabled")}` });
 };
@@ -3395,7 +3395,7 @@ Actions["adm-notif-send"] = async (form) => {
   const v = validate(form, { title: [req()], message: [req()], membership_no: [[(x, a) => a.audience !== "member" || RX.membership.test(normMembership(x)), "Enter a valid membership number."]] }); if (!v) return;
   let uid = null;
   if (v.audience === "admins") uid = "admins";
-  if (v.audience === "member") { const m = API.find("members", (x) => x.membership_no === normMembership(v.membership_no)); if (!m) return fieldError(form, "membership_no", "No member with this number."); if (!m.user_id) return fieldError(form, "membership_no", "This member has no linked FPAA Connect account yet."); uid = m.user_id; }
+  if (v.audience === "member") { const m = API.find("members", (x) => x.membership_no === normMembership(v.membership_no)); if (!m) return fieldError(form, "membership_no", "No member with this number."); if (!m.user_id) return fieldError(form, "membership_no", "This member has no linked FPAA Connect 2.0 account yet."); uid = m.user_id; }
   await busy(form.querySelector('[type="submit"]'), "Sending…", async () => { await API.insert("notifications", { user_id: uid, type: v.type, title: v.title, message: v.message, link: v.link, read_by: [] }); audit("Sent notification", v.title); refreshBadges(); toast("success", "Notification sent"); Admin.rerender(); });
 };
 Actions["adm-notif-delete"] = async (el) => { await API.remove("notifications", el.dataset.id); refreshBadges(); toast("success", "Notification deleted"); Admin.rerender(); };
@@ -3439,7 +3439,7 @@ Actions["adm-acc-create"] = async (form) => {
       const p = await API.insert("profiles", { email: v.email.toLowerCase(), full_name: v.full_name, mobile: normMobile(v.mobile), role: v.role, member_id: member ? member.id : null, auth_method: "Email + Password", status: "Active", salt, password_hash: API.mode === "demo" ? await hashPassword(pw, salt) : null, last_login: null });
       if (member) await API.update("members", member.id, Object.assign({ user_id: p.id }, v.category ? { category: v.category } : {}));
       if (v.role !== "member") await API.insert("committee_roles", { user_id: p.id, role: v.role, assigned_at: new Date().toISOString() });
-      notify(p.id, "membership", "Welcome to FPAA Connect", member ? `Your account is linked to ${member.membership_no}.` : "Link your membership from My FPAA.", "#my-fpaa");
+      notify(p.id, "membership", "Welcome to FPAA Connect 2.0", member ? `Your account is linked to ${member.membership_no}.` : "Link your membership from My FPAA.", "#my-fpaa");
       audit("Created account", v.email); form.reset(); Filters.aAcc();
       toast("success", "Account created", v.email); if (API.mode === "demo") showTempPassword(v.email, pw, Auth.recoveryKey(v.full_name, v.mobile));
     } catch (e) { formMsg($("#accMsg"), "error", "Could not create account.", e.message); }
@@ -3536,11 +3536,11 @@ function safeUrl(u) { const s = String(u || "").trim(); return /^https?:\/\//i.t
 async function boot() {
   const page = document.body.dataset.page;
   $$("[data-logo]").forEach((img) => { img.src = CONFIG.LOGO_URL; });
-  const view = $("#view"); if (view) setHTML(view, loadingBlock("Loading FPAA Connect…"));
+  const view = $("#view"); if (view) setHTML(view, loadingBlock("Loading FPAA Connect 2.0…"));
   try { await API.init(); await Auth.restore(); }
   catch (err) {
     console.error(err);
-    const msg = alertBox("error", "Could not load FPAA Connect.", "Please try again. " + (err && err.message ? err.message : ""));
+    const msg = alertBox("error", "Could not load FPAA Connect 2.0.", "Please try again. " + (err && err.message ? err.message : ""));
     if (view) setHTML(view, h`<div class="glass card">${msg}<div class="form-actions"><button class="btn btn-primary" onclick="location.reload()">Retry</button></div></div>`);
     else if ($("#loginCard")) setHTML($("#loginCard"), msg);
     return;

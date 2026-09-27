@@ -1,5 +1,5 @@
 /* =====================================================================
-   FPAA Connect — Supabase configuration
+   FPAA Connect 2.0 — Supabase configuration
    ---------------------------------------------------------------------
    Leave SUPABASE_URL and SUPABASE_ANON_KEY empty to run in DEMO MODE
    (all data is stored in this browser's localStorage).
@@ -38,7 +38,7 @@ window.FPAA_CONFIG = {
     if (parts.length === 3) {
       var payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
       if (payload && payload.role === "service_role") {
-        console.error("FPAA Connect: a service_role key was found in supabase-config.js. It has been ignored. Use the anon key only.");
+        console.error("FPAA Connect 2.0: a service_role key was found in supabase-config.js. It has been ignored. Use the anon key only.");
         window.FPAA_CONFIG.SUPABASE_ANON_KEY = "";
         window.FPAA_CONFIG.SUPABASE_URL = "";
       }
