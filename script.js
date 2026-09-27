@@ -747,7 +747,7 @@ async function buildSeed() {
   // ---- Notices ----
   const nts = [
     ["Membership renewal window for 2026–27 is open", "Membership", "Important", -1, "Members under Social Media Handling category must renew by 31 March 2027. Renewal can be paid via UPI and verified by the Finance Committee.", "Renewal-Guidelines-2026.pdf"],
-    ["Applications invited: Falakata Alumni Scheme 2026", "Scholarship", "Urgent", -2, "Applications for the Savitribai Fule and Sir M. Visvesvaraya Excellence Scholarships close on 31 October 2026. Apply through the Falakata Alumni Scheme section.", "Scheme-Notification-2026.pdf"],
+    ["Applications invited: Alumni Sponsored Scheme 2026", "Scholarship", "Urgent", -2, "Applications for the Savitribai Fule and Sir M. Visvesvaraya Excellence Scholarships close on 31 October 2026. Contact the FPAA Scheme Committee for details.", "Scheme-Notification-2026.pdf"],
     ["Annual Alumni Meet 2026 — registration open", "Event", "Normal", -4, "Register for the Annual Alumni Meet from the Events section. Department-wise reunion slots will be announced separately.", ""],
     ["Updated bank account for FPAA donations", "Finance", "Important", -9, "All donations must be made only to the association's official account shown in the Donations section. Always record your UTR/reference number.", "FPAA-Bank-Details.pdf"],
     ["Profile verification drive", "Membership", "Normal", -14, "Members are requested to update their current profession and address in My FPAA to keep the alumni directory accurate.", ""],
@@ -809,7 +809,7 @@ async function buildSeed() {
 
   // ---- Notifications ----
   const nf = [
-    [null, "notice", "Scholarship applications open", "Falakata Alumni Scheme 2026 applications close on 31 Oct 2026.", "#scheme", -2],
+    [null, "notice", "Scholarship applications open", "Alumni Sponsored Scheme 2026 applications close on 31 Oct 2026.", "#scheme", -2],
     [U.member, "membership", "Social Media Handling application under review", "APP-2026-0102 is being reviewed by the Registration Committee.", "#my-fpaa", -5],
     [U.member, "donation", "Donation verified", "Thank you! DON-2026-0001 of ₹5,000 has been verified.", "#my-fpaa", -118],
     [null, "event", "Annual Alumni Meet 2026", "Registration is open for the Annual Alumni Meet.", "#events", -4],
@@ -822,7 +822,7 @@ async function buildSeed() {
 
   // ---- Dashboard feed & gallery ----
   const feed = [
-    ["announcement", "Falakata Alumni Scheme 2026 is open", "Scholarship applications for female and male students close 31 Oct.", -0.2],
+    ["announcement", "Alumni Sponsored Scheme 2026 is open", "Scholarship applications for female and male students close 31 Oct.", -0.2],
     ["event", "Annual Alumni Meet — 118 registrations", "Department reunion slots will be published next week.", -1],
     ["notice", "Membership renewal window open", "Social Media Handling members can renew for 2026–27.", -1.5],
     ["gallery", "New photos: Foundation Day 2026", "Tree plantation and blood donation camp highlights added to the gallery.", -3],
@@ -887,7 +887,8 @@ const API = {
       const DEMO_MOBILES = { "newuser@fpaa.in": "9123456712", "admin@fpaa.in": "9800000001", "registration@fpaa.in": "9800000002", "finance@fpaa.in": "9800000003", "content@fpaa.in": "9800000004" };
       if (!S.db.committee_members.length) { seedCommittee(S.db); this.persist(); }
       let fixed = false; S.db.profiles.forEach((p) => { if (!p.mobile) { const m = p.member_id && S.db.members.find((x) => x.id === p.member_id); const mob = (m && m.mobile) || DEMO_MOBILES[p.email]; if (mob) { p.mobile = mob; fixed = true; } } if (/OTP/.test(p.auth_method || "")) { p.auth_method = "Email + Password"; fixed = true; } }); if (fixed) this.persist();
-      const campus = S.db.homepage_gallery_feed.find((g) => /^Falakata Polytechnic campus/.test(g.caption || "") && String(g.image).startsWith("data:image/svg")); if (campus) { campus.image = "assets/campus.jpg"; this.persist(); } }
+      const campus = S.db.homepage_gallery_feed.find((g) => /^Falakata Polytechnic campus/.test(g.caption || "") && String(g.image).startsWith("data:image/svg")); if (campus) { campus.image = "assets/campus.jpg"; this.persist(); }
+      let renamed = false; ["notices", "notifications", "dashboard_live_feed"].forEach((t) => S.db[t].forEach((row) => Object.keys(row).forEach((k) => { if (typeof row[k] === "string" && row[k].includes("Falakata Alumni Scheme")) { row[k] = row[k].replace(/Apply through the Falakata Alumni Scheme section\./g, "Contact the FPAA Scheme Committee for details.").replace(/Falakata Alumni Scheme/g, "Alumni Sponsored Scheme"); renamed = true; } }))); if (renamed) this.persist(); }
     else { S.db = await buildSeed(); this.persist(); }
   },
   readLocal() { try { return JSON.parse(localStorage.getItem(DB_KEY) || "null"); } catch (e) { return null; } },
@@ -1123,7 +1124,7 @@ function pwField({ label, name, placeholder = "", autocomplete = "current-passwo
 const LoginPage = {
   view: "signin", prefill: "",
   init() {
-    const feats = [["users", "Alumni directory"], ["idcard", "Digital membership card"], ["briefcase", "Career & jobs"], ["school", "Falakata Alumni Scheme"]];
+    const feats = [["users", "Alumni directory"], ["idcard", "Digital membership card"], ["briefcase", "Career & jobs"], ["school", "Alumni Sponsored Scheme"]];
     setHTML($("#loginFeats"), feats.map((f) => h`<div>${icon(f[0])}${f[1]}</div>`));
     if (isSignedIn()) { this.redirect(); return; }
     const q = new URLSearchParams(location.search).get("mode");
@@ -1284,7 +1285,7 @@ const ROUTES = [
   { id: "donations", label: "Donations", icon: "heart", group: "Community", protected: true },
   { id: "achievements", label: "Achievements", icon: "trophy", group: "Community", protected: true },
   { id: "memories", label: "Memories", icon: "image", group: "Community", protected: true },
-  { id: "scheme", label: "Falakata Alumni Scheme", icon: "school", group: "Community", protected: true },
+  { id: "scheme", label: "Alumni Sponsored Scheme", icon: "school", group: "Community", protected: true },
   { id: "notices", label: "Notices", icon: "megaphone", group: "Community", protected: true },
   { id: "admin", label: "Admin", icon: "shield", group: "Administration", admin: true }
 ];
@@ -1762,7 +1763,7 @@ const MyFPAA = {
   quickAccess() {
     const q = [["directory", "users", "", "Alumni Directory", "Find and connect with batchmates across departments."], ["careers", "briefcase", "gold", "Career & Jobs", "Verified openings posted by alumni and partners."], ["events", "calendar", "violet", "Events", "Meets, seminars and workshops — register online."],
       ["donations", "heart", "", "Donations", "Support scholarships and campus development."], ["achievements", "trophy", "gold", "Achievements", "Celebrate alumni milestones and awards."], ["chat", "chat", "teal", "Community Chat", "Message the FPAA community in real time."],
-      ["memories", "image", "violet", "Memories", "Share and relive campus moments."], ["scheme", "school", "", "Falakata Alumni Scheme", "Scholarships and skill development programmes."], ["notices", "megaphone", "gold", "Notices", "Official circulars and announcements."]];
+      ["memories", "image", "violet", "Memories", "Share and relive campus moments."], ["scheme", "school", "", "Alumni Sponsored Scheme", "Scholarships and skill development programmes."], ["notices", "megaphone", "gold", "Notices", "Official circulars and announcements."]];
     return h`<section class="section reveal"><div class="section-head"><div><span class="eyebrow">${icon("sparkles", "ico ico-sm")} Members only</span><h2>FPAA Member Quick Access</h2></div></div>
       <div class="mf-quick">${q.map((x) => x[0] === "chat" ? h`<button class="mf-qcard" data-action="chat-open">${h`<span class="ico-tile ${x[2]}">${icon(x[1])}</span>`}<span><b>${x[3]}</b><span>${x[4]}</span></span></button>`
         : h`<a class="mf-qcard" href="#${x[0]}" style="text-decoration:none"><span class="ico-tile ${x[2]}">${icon(x[1])}</span><span><b>${x[3]}</b><span>${x[4]}</span></span></a>`)}</div></section>`;
@@ -2510,7 +2511,7 @@ Actions["mem-submit"] = async (form) => {
 };
 
 /* =====================================================================
-   SCHEMES — FALAKATA ALUMNI SCHEME (three scheme folders + detail view)
+   SCHEMES — ALUMNI SPONSORED SCHEME (three scheme folders + detail view)
    ===================================================================== */
 const Schemes = {
   all() { return API.all("volunteer_opportunities"); },
@@ -2521,25 +2522,23 @@ Views.scheme = (r) => {
   const sc = r.param ? Schemes.all().find((s) => s.id === r.param) : null;
   if (sc) return Schemes.detail(sc);
   const mine = Schemes.mine();
-  return h`${pageHead({ eyebrow: "Scholarships & skills", title: "FALAKATA ALUMNI SCHEME", sub: "Alumni-funded programmes that reward merit, support students in need and build job-ready skills. Open a folder to see eligibility, benefits and how to apply." })}
+  return h`${pageHead({ eyebrow: "Scholarships & skills", title: "ALUMNI SPONSORED SCHEME", sub: "Alumni-funded programmes that reward merit, support students in need and build job-ready skills. Open a folder to see eligibility, selection criteria and benefits." })}
     <div class="sch-grid">${Schemes.all().map((s, i) => h`<button class="sch-folder ${s.tone} reveal" style="animation-delay:${i * 90}ms" data-action="go" data-to="#scheme/${s.id}">
       <span class="row" style="justify-content:space-between;width:100%"><span class="ico-tile">${icon(s.icon)}</span><span class="chip slate">${icon("folder", "ico ico-sm")} ${s.code}</span></span>
       <h3>${s.name}</h3><span class="chip ${i === 0 ? "violet" : i === 1 ? "" : "gold"}" style="align-self:flex-start">${s.audience}</span><p>${s.summary}</p>
       <span class="sf-foot"><span>${icon("calendar", "ico ico-sm")} ${s.deadline}</span><span>${s.seats} seats</span><span style="color:var(--indigo)">Open folder ${icon("chevR", "ico ico-sm")}</span></span></button>`)}</div>
     <section class="section glass card reveal"><div class="card-head"><div><span class="eyebrow">${icon("file", "ico ico-sm")} Your applications</span><h3>My scheme applications</h3></div></div>
       ${mine.length ? h`<div class="table-wrap"><table class="data-table"><thead><tr><th>Application No.</th><th>Scheme</th><th>Submitted</th><th>Status</th><th>Remarks</th></tr></thead><tbody>${mine.map((a) => h`<tr><td class="mono t-strong">${a.application_no}</td><td>${(Schemes.all().find((s) => s.id === a.scheme_id) || {}).name}</td><td>${fmtDate(a.submitted_at)}</td><td>${statusPill(a.status)}</td><td class="small">${a.remarks || "—"}</td></tr>`)}</tbody></table></div>`
-        : emptyState("No scheme applications yet.", "Open a scheme folder to apply for yourself or help a student apply.", "school")}</section>`;
+        : emptyState("No scheme applications yet.", "Applications you submit through the Scheme Committee will appear here.", "school")}</section>`;
 };
 Schemes.detail = (s) => {
-  const tab = S.ui.scheme.tab || "eligibility";
-  const tabs = [["eligibility", "Eligibility"], ["criteria", "Criteria"], ["benefits", "Benefits"], ["application", "Application"], ["documents", "Documents"], ["status", "Status"]];
+  const tab = ["eligibility", "criteria", "benefits", "status"].includes(S.ui.scheme.tab) ? S.ui.scheme.tab : "eligibility";
+  const tabs = [["eligibility", "Eligibility"], ["criteria", "Criteria"], ["benefits", "Benefits"], ["status", "Status"]];
   const listOf = (arr, ic) => h`<ul class="sch-list">${arr.map((x) => h`<li>${icon(ic)}<span>${x}</span></li>`)}</ul>`;
   let body;
   if (tab === "eligibility") body = listOf(s.eligibility, "check");
   else if (tab === "criteria") body = listOf(s.criteria, "target");
   else if (tab === "benefits") body = listOf(s.benefits, "gift");
-  else if (tab === "documents") body = h`${listOf(s.documents, "file")}<p class="small muted" style="margin-top:12px">Keep scanned copies ready. The Scheme Review Committee will request originals during verification. Never share full Aadhaar numbers — upload masked copies only.</p>`;
-  else if (tab === "application") body = Schemes.form(s);
   else {
     const apps = Schemes.apps(s.id); const mine = Schemes.mine(s.id); const c = countBy(apps, (a) => a.status);
     body = h`<div class="grid grid-4" style="margin-bottom:18px">${SCHEME_STATUSES.slice(0, 4).map((st) => h`<div class="glass stat-card" style="box-shadow:none"><div class="sc-body"><div class="sc-label">${st}</div><div class="sc-value">${c[st] || 0}</div></div></div>`)}</div>
@@ -2547,7 +2546,7 @@ Schemes.detail = (s) => {
       <div><h4>Track an application</h4><form data-submit="scheme-track" novalidate class="stack">${field({ label: "Application Number", name: "application_no", placeholder: "FAS-2026-0001", attrs: 'style="text-transform:uppercase"' })}${field({ label: "Mobile", name: "mobile", type: "tel", attrs: 'inputmode="numeric" maxlength="16"' })}<button class="btn btn-primary" type="submit">${icon("search")}Check status</button><div class="form-msg" id="schTrackMsg"></div></form></div></div>`;
   }
   return h`<button class="btn btn-ghost btn-sm reveal" data-action="go" data-to="#scheme" style="margin-bottom:14px">${icon("arrowL", "ico ico-sm")}All schemes</button>
-    <section class="glass sch-detail-head reveal"><span class="ico-tile ${s.tone === "f-gold" ? "gold" : s.tone === "f-rose" ? "violet" : ""}">${icon(s.icon, "ico ico-lg")}</span><div style="min-width:0"><span class="eyebrow">Falakata Alumni Scheme · ${s.code}</span><h1 style="font-size:clamp(1.4rem,2.6vw,2rem);margin:6px 0">${s.name}</h1><p class="muted" style="margin:0">${s.summary}</p>
+    <section class="glass sch-detail-head reveal"><span class="ico-tile ${s.tone === "f-gold" ? "gold" : s.tone === "f-rose" ? "violet" : ""}">${icon(s.icon, "ico ico-lg")}</span><div style="min-width:0"><span class="eyebrow">Alumni Sponsored Scheme · ${s.code}</span><h1 style="font-size:clamp(1.4rem,2.6vw,2rem);margin:6px 0">${s.name}</h1><p class="muted" style="margin:0">${s.summary}</p>
       <div class="row" style="margin-top:10px"><span class="chip violet">${s.audience}</span><span class="chip">${icon("calendar", "ico ico-sm")} Last date: ${s.deadline}</span><span class="chip gold">${s.seats} seats</span></div></div></section>
     <div class="section"><div class="tabs reveal" role="tablist">${tabs.map((t) => h`<button class="tab ${tab === t[0] ? "active" : ""}" role="tab" aria-selected="${String(tab === t[0])}" data-action="scheme-tab" data-tab="${t[0]}">${t[1]}</button>`)}</div></div>
     <section class="glass card reveal" style="margin-top:14px">${body}</section>`;
@@ -2663,7 +2662,7 @@ Views.about = () => {
   else if (tab === "goals") body = h`<h2>Association Goals</h2><div class="value-list">${[
       ["Build a verified alumni database", "Maintain accurate, privacy-protected records of all Falakata Polytechnic alumni with digital membership."],
       ["Support careers", "Share verified job opportunities, referrals and mentoring through the Career Cell."],
-      ["Fund education", "Run the Falakata Alumni Scheme — Savitribai Fule and Sir M. Visvesvaraya Excellence Scholarships and the Dr. A.P.J. Abdul Kalam Youth Skill Development Programme."],
+      ["Fund education", "Run the Alumni Sponsored Scheme — Savitribai Fule and Sir M. Visvesvaraya Excellence Scholarships and the Dr. A.P.J. Abdul Kalam Youth Skill Development Programme."],
       ["Strengthen the institution", "Collaborate with Falakata Polytechnic on skill workshops, industry visits and infrastructure."],
       ["Engage and celebrate", "Organise alumni meets, recognise achievements and preserve shared memories."],
       ["Serve society", "Lead social initiatives in health, environment and community welfare across the Dooars region."]
@@ -2675,7 +2674,7 @@ Views.about = () => {
   return h`${pageHead({ eyebrow: "About FPAA", title: "ABOUT FPAA", sub: "Falakata Polytechnic Alumni Association — ESTD 2024." })}
     <section class="glass about-hero reveal"><div><span class="eyebrow">${icon("sparkles", "ico ico-sm")} Falakata Polytechnic · Alipurduar, West Bengal</span><h1 style="margin:8px 0 0">Falakata Polytechnic Alumni Association (FPAA)</h1>
       <p class="quote">“Connecting the Past. Empowering the Present. Building the Future.”</p>
-      <div class="btn-group"><a class="btn btn-primary" href="#membership">${icon("idcard")}Become a member</a><a class="btn btn-ghost" href="#scheme">${icon("school")}Falakata Alumni Scheme</a></div></div>
+      <div class="btn-group"><a class="btn btn-primary" href="#membership">${icon("idcard")}Become a member</a><a class="btn btn-ghost" href="#scheme">${icon("school")}Alumni Sponsored Scheme</a></div></div>
       <img src="${CONFIG.LOGO_URL}" alt="FPAA emblem"></section>
     <div class="section"><div class="tabs reveal" role="tablist" aria-label="About sections">${ABOUT_TABS.map((t) => h`<button class="tab ${tab === t[0] ? "active" : ""}" role="tab" aria-selected="${String(tab === t[0])}" data-action="about-tab" data-tab="${t[0]}">${t[1]}</button>`)}</div></div>
     <section class="glass about-panel reveal" id="aboutPanel">${body}</section>`;
@@ -2921,7 +2920,7 @@ const ADMIN_PANELS = [
   { id: "overview", label: "Dashboard Overview", icon: "chart", group: "Overview", perm: "admin.overview" },
   { id: "applications", label: "Membership Applications", icon: "file", group: "Membership Review & Approval", perm: "admin.applications", badge: () => API.all("membership_applications").filter((a) => ["Pending", "Under Review"].includes(a.status)).length },
   { id: "members", label: "Members Database", icon: "users", group: "Membership Review & Approval", perm: "admin.members" },
-  { id: "schemes", label: "Falakata Alumni Scheme Management", icon: "school", group: "Scheme Review & Approval", perm: "admin.schemes", badge: () => API.all("scheme_applications").filter((a) => ["Submitted", "Under Review"].includes(a.status)).length },
+  { id: "schemes", label: "Alumni Sponsored Scheme Management", icon: "school", group: "Scheme Review & Approval", perm: "admin.schemes", badge: () => API.all("scheme_applications").filter((a) => ["Submitted", "Under Review"].includes(a.status)).length },
   { id: "careers", label: "Career & Jobs Review", icon: "briefcase", group: "Career Review & Approval", perm: "admin.careers", badge: () => API.all("job_postings").filter((j) => j.status === "Pending").length },
   { id: "payments", label: "Membership Payment Verification", icon: "rupee", group: "Finance Review & Verification", perm: "admin.payments", badge: () => API.all("payments").filter((p) => p.status === "Pending").length },
   { id: "donations", label: "Donation Verification", icon: "heart", group: "Finance Review & Verification", perm: "admin.donations", badge: () => API.all("donations").filter((d) => d.status === "Pending").length },

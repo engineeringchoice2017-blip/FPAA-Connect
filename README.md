@@ -9,7 +9,7 @@ A single-page web application built with plain HTML5, CSS3 and vanilla JavaScrip
 
 | File | Purpose |
 |---|---|
-| `index.html` | Main application (Home, My FPAA, About, Directory, Membership, Career & Jobs, Events, Donations, Achievements, Memories, Falakata Alumni Scheme, Notices, Admin) |
+| `index.html` | Main application (Home, My FPAA, About, Directory, Membership, Career & Jobs, Events, Donations, Achievements, Memories, Alumni Sponsored Scheme, Notices, Admin) |
 | `login.html` | Sign in / Sign up page — email or mobile + password, show/hide password, Forgot Password with recovery key, Remember Me |
 | `style.css` | Design system — glassmorphism, neumorphism, responsive rules |
 | `script.js` | All application logic, organised in sections (AUTH, NAVIGATION, HOME, MY FPAA, … ADMIN, REPORTS, UTILITIES) |
@@ -120,7 +120,7 @@ Every `git push` to `main` redeploys automatically.
 
 ## Feature notes
 
-- **Access control:** Directory, Career & Jobs, Events, Donations, Achievements, Memories, Falakata Alumni Scheme and Notices require sign-in plus an active membership (or a committee role). Others are redirected to My FPAA with a clear message.
+- **Access control:** Directory, Career & Jobs, Events, Donations, Achievements, Memories, Alumni Sponsored Scheme and Notices require sign-in plus an active membership (or a committee role). Others are redirected to My FPAA with a clear message.
 - **Roles:** Super Admin (everything, incl. account creation); Registration Committee (applications, members, schemes, support, full mobile numbers); Finance Committee (payments, donations, finance reports, support); Content Admin (feed, gallery, events, notices, achievements, memories, notifications, jobs); Committee Member (overview, schemes, jobs, reports).
 - **Privacy:** mobile numbers are masked (`987654****`) everywhere except for Registration Committee/Super Admin; public verification shows only name, number, category, status and validity.
 - **Verification links:** `index.html#verify=FPAA-M-2026-000001`.

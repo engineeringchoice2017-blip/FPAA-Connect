@@ -99,7 +99,7 @@ create table if not exists public.support_replies (
   id uuid primary key default gen_random_uuid(), ticket_id uuid references public.support_requests(id) on delete cascade,
   author_name text, author_role text, message text, created_at timestamptz default now()
 );
-create table if not exists public.volunteer_opportunities ( -- stores the Falakata Alumni Scheme definitions
+create table if not exists public.volunteer_opportunities ( -- stores the Alumni Sponsored Scheme definitions
   id text primary key, code text, name text, audience text, icon text, tone text, summary text,
   eligibility text[], criteria text[], benefits text[], documents text[], deadline text, seats int, created_at timestamptz default now()
 );
@@ -222,7 +222,7 @@ create policy feed_write on public.dashboard_live_feed for all using (public.has
 -- Realtime for chat
 alter publication supabase_realtime add table public.member_chat_messages;
 
--- ---------- Seed: Falakata Alumni Scheme definitions ----------
+-- ---------- Seed: Alumni Sponsored Scheme definitions ----------
 insert into public.volunteer_opportunities (id, code, name, audience, icon, tone, summary, eligibility, criteria, benefits, documents, deadline, seats) values
 ('scheme-savitribai','SFES','Savitribai Fule Excellence Scholarship','Female students','female','f-rose','Merit-cum-means scholarship for meritorious female diploma students of Falakata Polytechnic.',
  array['Female student enrolled in a diploma programme of Falakata Polytechnic','Minimum 70% in the last semester','Annual family income below ₹2,50,000'], array['Academic merit (60%)','Family income (25%)','Statement & interview (15%)'],
