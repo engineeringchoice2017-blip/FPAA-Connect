@@ -27,7 +27,14 @@ window.FPAA_CONFIG = {
   // Contact details shown in the footer / About page
   CONTACT_EMAIL: "fpaa.connect@example.org",
   CONTACT_PHONE: "+91 00000 00000",
-  CONTACT_ADDRESS: "Falakata Polytechnic, Polytechnic College Road, Falakata, Alipurduar, West Bengal 735211"
+  CONTACT_ADDRESS: "Falakata Polytechnic, Polytechnic College Road, Falakata, Alipurduar, West Bengal 735211",
+
+  // Memories — photo albums kept on Google Drive (no storage used by the app).
+  // Each folder must be shared as "Anyone with the link can view".
+  MEMORY_DRIVE_FOLDERS: [
+    { title: "Falakata Polytechnic Days", url: "https://drive.google.com/drive/folders/1xsHdpEoHGcnRvFl7dHFYrSnUrCiRXqlV" },
+    { title: "All Photos", url: "https://drive.google.com/drive/folders/13_RJdUDNJ-djSp4AoTA2T7b7mPvUPvJ7" }
+  ]
 };
 
 /* Guard: refuse to run if a service-role key is ever pasted here. */

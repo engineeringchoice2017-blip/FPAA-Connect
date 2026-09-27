@@ -16,7 +16,8 @@
 
 const CONFIG = Object.assign({
   SUPABASE_URL: "", SUPABASE_ANON_KEY: "", LOGO_URL: "assets/fpaa-logo.png",
-  PUBLIC_SITE_URL: "", CONTACT_EMAIL: "", CONTACT_PHONE: "", CONTACT_ADDRESS: ""
+  PUBLIC_SITE_URL: "", CONTACT_EMAIL: "", CONTACT_PHONE: "", CONTACT_ADDRESS: "",
+  MEMORY_DRIVE_FOLDERS: []
 }, window.FPAA_CONFIG || {});
 
 /* =====================================================================
@@ -2453,6 +2454,24 @@ Actions["ach-submit"] = async (form) => {
 /* =====================================================================
    MEMORIES — alumni gallery with upload + approval
    ===================================================================== */
+/* ---------- Google Drive helpers (photos stay on Drive, only the link is saved) ---------- */
+const Drive = {
+  id(url) {
+    const u = String(url || "").trim(); if (!/^https:\/\/(drive|docs)\.google\.com\//.test(u)) return "";
+    const m = u.match(/\/(?:file\/d|folders|d)\/([A-Za-z0-9_-]{10,})/) || u.match(/[?&]id=([A-Za-z0-9_-]{10,})/);
+    return m ? m[1] : "";
+  },
+  isFolder(url) { return /\/folders\//.test(String(url || "")); },
+  thumb(id, w = 1600) { return `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w${w}`; },
+  view(id) { return `https://drive.google.com/file/d/${encodeURIComponent(id)}/view`; },
+  folderUrl(id) { return `https://drive.google.com/drive/folders/${encodeURIComponent(id)}`; },
+  embed(id) { return `https://drive.google.com/embeddedfolderview?id=${encodeURIComponent(id)}#grid`; },
+  fileIdFromPhoto(photo) { const m = String(photo || "").match(/^https:\/\/drive\.google\.com\/thumbnail\?id=([A-Za-z0-9_-]+)/); return m ? m[1] : ""; },
+  folders() { return (CONFIG.MEMORY_DRIVE_FOLDERS || []).map((f) => (typeof f === "string" ? { url: f } : f)).map((f, i) => ({ title: f.title || `Photo album ${i + 1}`, description: f.description || "", id: Drive.id(f.url) })).filter((f) => f.id); }
+};
+/* Broken Drive thumbnails (file not shared publicly) fall back to a placeholder. */
+document.addEventListener("error", (e) => { const t = e.target; if (t && t.tagName === "IMG" && /drive\.google\.com\/thumbnail/.test(t.src) && !t.dataset.fellBack) { t.dataset.fellBack = "1"; t.src = art("memory", 7); t.title = "This Google Drive photo is not shared publicly"; } }, true);
+
 const Memories = {
   filtered() {
     const f = S.ui.mem; const q = (f.q || "").toLowerCase().trim();
@@ -2466,12 +2485,23 @@ const Memories = {
     return h`<div class="mem-masonry">${all.map((m, i) => h`<button class="mem-item" data-action="mem-view" data-id="${m.id}"><img src="${m.photo}" alt="${m.caption}" loading="lazy" style="aspect-ratio:${[4 / 3, 1, 3 / 4, 16 / 10][i % 4]};object-fit:cover"><span class="mi-badge chip gold">${m.year}</span><span class="mi-cap"><b>${m.caption}</b><span>${m.member_name} · Batch ${m.batch}</span></span></button>`)}</div>`;
   }
 };
+Memories.albums = () => {
+  const fs = Drive.folders(); if (!fs.length) return "";
+  return h`<section class="section glass card reveal drive-albums-card"><div class="card-head"><div><span class="eyebrow">${icon("folder", "ico ico-sm")} Google Drive</span><h3>Photo albums</h3><p class="muted small" style="margin:4px 0 0">Full-resolution photos are kept in the association's Google Drive folders, so they take no space here. Open a folder to view or download.</p></div></div>
+    <div class="drive-albums">${fs.map((f) => h`<article class="drive-album">
+      <div class="da-head"><span class="ico-tile gold">${icon("folder")}</span><div class="grow" style="min-width:0"><h4>${f.title}</h4>${f.description ? h`<span class="small muted">${f.description}</span>` : ""}</div>
+        <a class="btn btn-primary btn-sm" href="${Drive.folderUrl(f.id)}" target="_blank" rel="noopener">${icon("external", "ico ico-sm")}Open in Drive</a></div>
+      <div class="da-frame"><iframe src="${Drive.embed(f.id)}" title="${f.title} — Google Drive folder" loading="lazy" referrerpolicy="no-referrer"></iframe></div>
+    </article>`)}</div></section>`;
+};
 Filters.mem = () => setHTML($('[data-list="mem"]'), Memories.list());
 Views.memories = () => {
   const f = S.ui.mem; const pub = API.all("memories").filter((m) => m.status === "Published");
   const mine = API.all("memories").filter((m) => S.profile && m.user_id === S.profile.id && m.status !== "Published");
-  return h`${pageHead({ eyebrow: "Community", title: "Memories", sub: "Photographs and moments from the classrooms, labs, hostels and fields of Falakata Polytechnic.", actions: h`<button class="btn btn-primary" data-action="mem-new">${icon("upload")}Upload memory</button>` })}
+  return h`${pageHead({ eyebrow: "Community", title: "Memories", sub: "Photographs and moments from the classrooms, labs, hostels and fields of Falakata Polytechnic.", actions: h`<button class="btn btn-primary" data-action="mem-new">${icon("link")}Share a memory</button>` })}
     ${mine.length ? h`<div style="margin-bottom:16px">${alertBox("info", `${mine.length} of your upload${mine.length > 1 ? "s are" : " is"} awaiting approval`, "Memories are published after review by the Content Admin.")}</div>` : ""}
+    ${Memories.albums()}
+    <div class="section-title reveal" style="margin:22px 0 12px"><span class="eyebrow">${icon("image", "ico ico-sm")} Shared by members</span><h3 style="margin:4px 0 0">Memory wall</h3></div>
     <div class="glass toolbar reveal">${searchFilter("mem.q", f.q, "Search caption, member…")}${selectFilter("mem.batch", f.batch, uniq(pub.map((m) => m.batch)).sort(), "All batches")}${selectFilter("mem.year", f.year, uniq(pub.map((m) => String(m.year))).sort().reverse(), "All years")}
       <select class="select" data-filter="mem.sort" aria-label="Sort">${[["new", "Recently added"], ["year", "Year: newest"], ["year-asc", "Year: oldest"]].map((o) => h`<option value="${o[0]}" ${raw(f.sort === o[0] ? "selected" : "")}>${o[1]}</option>`)}</select>
       <button class="btn btn-ghost btn-sm" data-action="clear-filters" data-group="mem">${icon("x", "ico ico-sm")}Clear</button></div>
@@ -2480,7 +2510,7 @@ Views.memories = () => {
 Actions["mem-view"] = (el) => {
   const list = Memories.filtered(); let i = list.findIndex((m) => m.id === el.dataset.id); if (i < 0) { const one = API.get("memories", el.dataset.id); if (!one) return; list.splice(0, list.length, one); i = 0; }
   const show = () => { const m = list[i]; Modal.open({ title: m.caption, eyebrow: `Memory ${i + 1} of ${list.length}`, size: "lg",
-    body: h`<img class="lightbox-img" src="${m.photo}" alt="${m.caption}"><dl class="kv" style="margin-top:14px"><dt>Shared by</dt><dd>${m.member_name}</dd><dt>Batch</dt><dd>${m.batch}</dd><dt>Year</dt><dd>${m.year}</dd></dl>`,
+    body: h`<img class="lightbox-img" src="${m.photo}" alt="${m.caption}"><dl class="kv" style="margin-top:14px"><dt>Shared by</dt><dd>${m.member_name}</dd><dt>Batch</dt><dd>${m.batch}</dd><dt>Year</dt><dd>${m.year}</dd></dl>${Drive.fileIdFromPhoto(m.photo) ? h`<a class="btn btn-soft btn-sm" style="margin-top:12px" href="${Drive.view(Drive.fileIdFromPhoto(m.photo))}" target="_blank" rel="noopener">${icon("external", "ico ico-sm")}Open original in Google Drive</a>` : ""}`,
     foot: h`<button class="btn btn-ghost" data-lb="prev" ${raw(list.length < 2 ? "disabled" : "")}>${icon("chevL")}Previous</button><button class="btn btn-ghost" data-lb="next" ${raw(list.length < 2 ? "disabled" : "")}>Next${icon("chevR")}</button>`,
     onMount: (mm) => { mm.querySelector('[data-lb="prev"]').onclick = () => { i = (i - 1 + list.length) % list.length; show(); }; mm.querySelector('[data-lb="next"]').onclick = () => { i = (i + 1) % list.length; show(); }; } }); };
   show();
@@ -2488,24 +2518,35 @@ Actions["mem-view"] = (el) => {
 function memoryForm(m = {}, admin = false) {
   const yrs = []; for (let y = new Date().getFullYear(); y >= 1990; y--) yrs.push(y);
   return h`<form data-submit="${admin ? "adm-memory-save" : "mem-submit"}" data-id="${m.id || ""}" novalidate><div class="form-grid">
-    <div class="field span-2"><span class="field-label">Photo ${m.id ? "" : h`<span class="req">*</span>`}</span><div class="file-drop"><img class="preview-thumb" id="memPrev" src="${m.photo || art("memory", 5)}" alt="Preview"><div class="grow"><input type="file" name="photo" accept="image/jpeg,image/png,image/webp" data-preview="#memPrev" aria-label="Memory photo"><div class="hint small muted">JPG, PNG or WEBP · large photos are resized automatically</div></div></div><span class="err"></span></div>
+    <div class="field span-2"><label class="field-label" for="memLink">Google Drive photo link ${m.id ? "" : h`<span class="req">*</span>`}</label><div class="file-drop"><img class="preview-thumb" id="memPrev" src="${m.photo || art("memory", 5)}" alt="Preview"><div class="grow"><input class="input" id="memLink" type="url" name="drive_link" inputmode="url" placeholder="https://drive.google.com/file/d/…/view" value="${Drive.fileIdFromPhoto(m.photo) ? Drive.view(Drive.fileIdFromPhoto(m.photo)) : ""}" aria-describedby="memLinkHint"><div class="hint small muted" id="memLinkHint">Upload the photo to Google Drive, set sharing to <b>Anyone with the link</b>, then paste the photo's link here. The photo stays on Drive — no space is used here.${m.id && !Drive.fileIdFromPhoto(m.photo) ? " Leave empty to keep the current photo." : ""}</div></div></div><span class="err"></span></div>
     ${field({ label: "Caption", name: "caption", required: true, value: m.caption, span: true, attrs: 'maxlength="120"' })}
     ${field({ label: "Batch", name: "batch", required: true, value: m.batch || (S.member ? `${S.member.admission_year}–${S.member.passing_year}` : ""), placeholder: "e.g. 2014–2017", attrs: 'maxlength="20"' })}
     ${field({ label: "Year", name: "year", required: true, options: yrs, value: m.year || "", placeholder: "Year of photo" })}
     ${field({ label: "Member Name", name: "member_name", required: true, value: m.member_name || (S.member ? S.member.full_name : S.profile ? S.profile.full_name : ""), span: !admin, attrs: 'maxlength="80"' })}
     ${admin ? field({ label: "Status", name: "status", options: ["Pending", "Approved", "Published"], value: m.status || "Published" }) : ""}
-  </div><div class="form-actions"><button type="button" class="btn btn-ghost" data-action="modal-close">Cancel</button><button class="btn btn-primary" type="submit">${icon("upload")}${admin ? "Save" : "Upload memory"}</button></div></form>`;
+  </div><div class="form-actions"><button type="button" class="btn btn-ghost" data-action="modal-close">Cancel</button><button class="btn btn-primary" type="submit">${icon(admin ? "check" : "send")}${admin ? "Save" : "Share memory"}</button></div></form>`;
 }
-Actions["mem-new"] = () => Modal.open({ title: "Upload a memory", eyebrow: "Memories", size: "lg", body: memoryForm(), onMount: (m) => bindFilePreviews(m) });
+function bindDriveLink(root) {
+  const inp = root.querySelector("#memLink"), img = root.querySelector("#memPrev"); if (!inp || !img) return;
+  inp.addEventListener("input", () => { const id = Drive.id(inp.value); if (id && !Drive.isFolder(inp.value)) { delete img.dataset.fellBack; img.src = Drive.thumb(id, 600); } });
+}
+/* Returns { photo } from the Drive link field, { error } for a bad link, or {} when left empty. */
+function memPhotoFromForm(form) {
+  const val = (form.querySelector('[name="drive_link"]').value || "").trim(); if (!val) return {};
+  if (Drive.isFolder(val)) return { error: "That is a folder link. Open the photo itself in Drive and copy its link." };
+  const id = Drive.id(val); if (!id) return { error: "Paste a Google Drive photo link (drive.google.com/file/d/…)." };
+  return { photo: Drive.thumb(id) };
+}
+Actions["mem-new"] = () => Modal.open({ title: "Share a memory", eyebrow: "Memories", size: "lg", body: memoryForm(), onMount: (m) => bindDriveLink(m) });
 Actions["mem-submit"] = async (form) => {
   const v = validate(form, { caption: [req()], batch: [req()], year: [req()], member_name: [req()] }); if (!v) return;
-  const inp = form.querySelector('[name="photo"]'); if (!inp.files[0]) { fieldError(form, "photo", "Please choose a photo."); return; }
-  await busy(form.querySelector('[type="submit"]'), "Uploading…", async () => {
+  const ph = memPhotoFromForm(form); if (ph.error || !ph.photo) { fieldError(form, "drive_link", ph.error || "Please paste the Google Drive link of the photo."); return; }
+  await busy(form.querySelector('[type="submit"]'), "Sharing…", async () => {
     try {
-      const photo = inp._dataUrl && inp._dataUrl.length > 0 ? await readImageFile(inp.files[0]) : await readImageFile(inp.files[0]);
+      const photo = ph.photo;
       await API.insert("memories", { caption: v.caption, batch: v.batch, year: Number(v.year), member_name: v.member_name, photo, status: "Pending", user_id: S.profile.id });
       notify("admins", "memory", "Memory awaiting approval", v.caption, "#admin/memories"); audit("Uploaded memory", v.caption);
-      Modal.close(); toast("success", "Memory uploaded", "It will be published after approval."); Router.render();
+      Modal.close(); toast("success", "Memory shared", "It will be published after approval."); Router.render();
     } catch (e) { toast("error", "Upload failed", e.message); }
   });
 };
@@ -3441,7 +3482,7 @@ Actions["adm-ach-delete"] = async (el) => { const a = API.get("achievements", el
 /* ---------- Memories moderation ---------- */
 AdminPanels.memories = () => {
   const u = uiOf("aMem", { sort: "new" });
-  return h`${admToolbar(h`${searchFilter("aMem.q", u.q, "Search caption, member…")}${selectFilter("aMem.status", u.status, ["Pending", "Approved", "Published"], "All statuses")}${sortSelect("aMem", u.sort, [["new", "Newest first"], ["old", "Oldest first"]])}<button class="btn btn-ghost btn-sm" data-action="clear-filters" data-group="aMem">${icon("x", "ico ico-sm")}Clear</button><button class="btn btn-primary btn-sm" data-action="adm-memory-edit" data-id="">${icon("upload", "ico ico-sm")}Upload memory</button>`)}
+  return h`${admToolbar(h`${searchFilter("aMem.q", u.q, "Search caption, member…")}${selectFilter("aMem.status", u.status, ["Pending", "Approved", "Published"], "All statuses")}${sortSelect("aMem", u.sort, [["new", "Newest first"], ["old", "Oldest first"]])}<button class="btn btn-ghost btn-sm" data-action="clear-filters" data-group="aMem">${icon("x", "ico ico-sm")}Clear</button><button class="btn btn-primary btn-sm" data-action="adm-memory-edit" data-id="">${icon("link", "ico ico-sm")}Add memory</button>`)}
     ${Admin.listRender("aMem", AdminLists.memories)}`;
 };
 AdminLists.memories = () => {
@@ -3453,12 +3494,12 @@ AdminLists.memories = () => {
   ], slice, { wide: true, empty: "No memories found." })}${pg}`;
 };
 Actions["adm-memory-status"] = async (el) => { const m = API.get("memories", el.dataset.id); const st = el.dataset.status; await busy(el, "Updating…", () => API.update("memories", m.id, { status: st })); audit(`Memory ${st.toLowerCase()}`, m.caption); if (st === "Published" && m.user_id) notify(m.user_id, "memory", "Your memory is published", m.caption, "#memories"); toast("success", `Memory ${st.toLowerCase()}`); Admin.rerender(); };
-Actions["adm-memory-edit"] = (el) => { const m = el.dataset.id ? API.get("memories", el.dataset.id) : {}; Modal.open({ title: m.id ? "Edit memory" : "Upload memory", eyebrow: "Memories", size: "lg", body: memoryForm(m, true), onMount: (mm) => bindFilePreviews(mm) }); };
+Actions["adm-memory-edit"] = (el) => { const m = el.dataset.id ? API.get("memories", el.dataset.id) : {}; Modal.open({ title: m.id ? "Edit memory" : "Add memory", eyebrow: "Memories", size: "lg", body: memoryForm(m, true), onMount: (mm) => bindDriveLink(mm) }); };
 Actions["adm-memory-save"] = async (form) => {
   const v = validate(form, { caption: [req()], batch: [req()], year: [req()], member_name: [req()] }); if (!v) return;
-  const inp = form.querySelector('[name="photo"]'); if (!form.dataset.id && !inp.files[0]) { fieldError(form, "photo", "Please choose a photo."); return; }
+  const ph = memPhotoFromForm(form); if (ph.error || (!form.dataset.id && !ph.photo)) { fieldError(form, "drive_link", ph.error || "Please paste the Google Drive link of the photo."); return; }
   await busy(form.querySelector('[type="submit"]'), "Saving…", async () => {
-    try { const data = { caption: v.caption, batch: v.batch, year: Number(v.year), member_name: v.member_name, status: v.status }; if (inp.files[0]) data.photo = await readImageFile(inp.files[0]);
+    try { const data = { caption: v.caption, batch: v.batch, year: Number(v.year), member_name: v.member_name, status: v.status }; if (ph.photo) data.photo = ph.photo;
       if (form.dataset.id) await API.update("memories", form.dataset.id, data); else await API.insert("memories", Object.assign(data, { user_id: S.profile.id }));
       audit("Saved memory", v.caption); Modal.close(); toast("success", "Memory saved"); Admin.rerender(); }
     catch (e) { toast("error", "Could not save memory.", e.message); }
