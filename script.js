@@ -507,6 +507,39 @@ function printHTML(title, bodyHTML, css) {
   else imgs.forEach((im) => { const fin = () => { if (--pending === 0) setTimeout(go, 250); }; if (im.complete) fin(); else { im.onload = fin; im.onerror = fin; } });
   setTimeout(() => { if (pending > 0) { pending = 0; go(); } }, 2500);
 }
+/* ---------- Real PDF download (works on mobile, where print dialogs from iframes fail) ---------- */
+const PDF_LIBS = ["assets/vendor/html2canvas.min.js", "assets/vendor/jspdf.umd.min.js"]; // html2canvas 1.4.1 + jsPDF 2.5.1 (MIT), bundled locally
+function loadScript(src) {
+  return new Promise((res, rej) => { if (document.querySelector(`script[src="${src}"]`) && (window.html2canvas || window.jspdf)) return res(); const sc = document.createElement("script"); sc.src = src; sc.onload = res; sc.onerror = () => rej(new Error("Could not load " + src)); document.head.appendChild(sc); });
+}
+async function loadPdfLibs() { if (!window.html2canvas) await loadScript(PDF_LIBS[0]); if (!(window.jspdf && window.jspdf.jsPDF)) await loadScript(PDF_LIBS[1]); }
+/* Renders bodyHTML+css on a fixed-size page (mm) and downloads it as a PDF file. */
+async function savePDF({ title, file, bodyHTML, css, w, h, pad = 0 }) {
+  toast("info", "Preparing PDF…", "Your download will start in a moment.");
+  await loadPdfLibs();
+  const pxPerMm = 96 / 25.4, wPx = Math.round(w * pxPerMm), hPx = Math.round(h * pxPerMm);
+  const frame = document.createElement("iframe"); frame.setAttribute("aria-hidden", "true"); frame.tabIndex = -1;
+  frame.style.cssText = `position:fixed;left:-${wPx + 200}px;top:0;width:${wPx}px;height:${hPx}px;border:0;opacity:0;pointer-events:none`;
+  document.body.appendChild(frame);
+  try {
+    const doc = frame.contentWindow.document; doc.open();
+    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Manrope:wght@700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"><style>${css}html,body{margin:0;background:#fff}#pdfRoot{width:${w}mm;height:${h}mm;padding:${pad}mm;box-sizing:border-box;overflow:hidden;background:#fff}</style></head><body><div id="pdfRoot">${bodyHTML}</div></body></html>`);
+    doc.close();
+    await Promise.race([Promise.all([...Array.from(doc.images).map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; })), doc.fonts ? doc.fonts.ready : 0]), new Promise((r) => setTimeout(r, 4000))]);
+    await new Promise((r) => setTimeout(r, 150));
+    const canvas = await window.html2canvas(doc.getElementById("pdfRoot"), { scale: 2, useCORS: true, backgroundColor: "#ffffff", width: wPx, height: hPx, windowWidth: wPx, windowHeight: hPx, logging: false });
+    const pdf = new window.jspdf.jsPDF({ orientation: w > h ? "landscape" : "portrait", unit: "mm", format: [w, h], compress: true });
+    pdf.addImage(canvas.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, w, h);
+    pdf.setProperties({ title });
+    pdf.save(file);
+    toast("success", "PDF downloaded", file);
+  } finally { frame.remove(); }
+}
+/* Download as PDF; fall back to the print dialog if the PDF libraries cannot load. */
+async function downloadOrPrint(opts, printCss) {
+  try { await savePDF(opts); }
+  catch (e) { console.error(e); toast("info", "Opening print dialog…", "Choose 'Save as PDF' to keep a digital copy."); printHTML(opts.title, opts.bodyHTML, printCss || opts.css); }
+}
 /* =====================================================================
    DATA / API — constants, demo seed, localStorage store, Supabase adapter
    ===================================================================== */
@@ -1734,7 +1767,7 @@ const MyFPAA = {
   },
   gate() {
     return h`<div class="glass gate reveal"><img src="${CONFIG.LOGO_URL}" alt="FPAA emblem"><span class="eyebrow">Members area</span><h2>Sign in to My FPAA</h2>
-      <p>View your membership, print your certificate and membership card, track applications and donations, and access the alumni directory, jobs, events and more.</p>
+      <p>View your membership, download your certificate and membership card, track applications and donations, and access the alumni directory, jobs, events and more.</p>
       <div class="btn-group" style="justify-content:center"><a class="btn btn-primary" href="login.html?next=my-fpaa">${icon("login")}Sign in</a><a class="btn btn-gold" href="login.html?mode=signup&next=my-fpaa">${icon("userPlus")}Create account</a><a class="btn btn-ghost" href="#membership">${icon("idcard")}Apply for membership</a><button class="btn btn-ghost" data-action="verify-open">${icon("shield")}Verify a membership</button></div></div>`;
   },
   hero() {
@@ -1815,8 +1848,8 @@ const MyFPAA = {
         : emptyState("No membership linked.", "Link your approved membership or apply for a new one to receive your certificate and membership card.", "idcard")}
       ${m && !active ? h`<div style="margin-top:14px">${alertBox("warn", "Membership not active", m.status === "Pending Payment" ? "Your membership will activate once the Finance Committee verifies your payment." : "Renew your membership to re-activate your certificate, card and member services.")}</div>` : ""}
       <div class="btn-group" style="margin-top:18px">
-        <button class="btn btn-primary" data-action="print-certificate" ${raw(active ? "" : "disabled")} title="${active ? "Print membership certificate" : "Requires an active membership"}">${icon("certificate")}PRINT CERTIFICATE</button>
-        <button class="btn btn-gold" data-action="print-card" ${raw(active ? "" : "disabled")} title="${active ? "Print membership card" : "Requires an active membership"}">${icon("printer")}PRINT MEMBERSHIP CARD</button>
+        <button class="btn btn-primary" data-action="print-certificate" ${raw(active ? "" : "disabled")} title="${active ? "Download membership certificate (PDF)" : "Requires an active membership"}">${icon("download")}DOWNLOAD CERTIFICATE</button>
+        <button class="btn btn-gold" data-action="print-card" ${raw(active ? "" : "disabled")} title="${active ? "Download membership card (PDF)" : "Requires an active membership"}">${icon("download")}DOWNLOAD MEMBERSHIP CARD</button>
       </div></section>`;
   },
   appsSection() {
@@ -1923,8 +1956,8 @@ Actions["profile-save"] = async (form) => {
   });
 };
 Actions["copy-verify"] = (el) => copyText(publicBaseUrl() + "#verify=" + el.dataset.no);
-Actions["print-certificate"] = (el) => { const m = el.dataset.id ? API.get("members", el.dataset.id) : S.member; if (!m || m.status !== "Active") return toast("error", "Certificate unavailable", "An active membership is required."); Certificates.certificate(m); };
-Actions["print-card"] = (el) => { const m = el.dataset.id ? API.get("members", el.dataset.id) : S.member; if (!m || m.status !== "Active") return toast("error", "Membership card unavailable", "An active membership is required."); Certificates.card(m); };
+Actions["print-certificate"] = (el) => { const m = el.dataset.id ? API.get("members", el.dataset.id) : S.member; if (!m || m.status !== "Active") return toast("error", "Certificate unavailable", "An active membership is required."); busy(el, "Preparing…", () => Certificates.certificate(m)); };
+Actions["print-card"] = (el) => { const m = el.dataset.id ? API.get("members", el.dataset.id) : S.member; if (!m || m.status !== "Active") return toast("error", "Membership card unavailable", "An active membership is required."); busy(el, "Preparing…", () => Certificates.card(m)); };
 Actions["app-view"] = (el) => {
   const a = API.get("membership_applications", el.dataset.id); if (!a) return;
   Modal.open({ title: a.application_no, eyebrow: "Membership application", body: h`<div class="row" style="margin-bottom:14px">${statusPill(a.status)} <span class="small muted">Payment:</span> ${statusPill(a.payment_status)}</div>
@@ -1939,15 +1972,16 @@ const Certificates = {
     const verify = publicBaseUrl() + "#verify=" + m.membership_no;
     const css = `@page{size:A4 landscape;margin:0}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;font-family:Inter,Arial,sans-serif;color:#0F2744}
       .page{width:297mm;height:210mm;padding:10mm;background:linear-gradient(135deg,#F7FAFF,#EEF4FF)}
-      .frame{position:relative;height:100%;border:3px solid #D7A52B;outline:1.5px solid #15365F;outline-offset:-9px;border-radius:6px;padding:16mm 22mm;text-align:center;background:radial-gradient(circle at 50% 55%,rgba(59,130,246,.06),transparent 60%)}
+      .frame{position:relative;height:100%;border:3px solid #D7A52B;border-radius:6px;padding:11mm 22mm;text-align:center;background:radial-gradient(circle at 50% 55%,rgba(59,130,246,.06),transparent 60%)}
+      .frame:before{content:"";position:absolute;left:1.6mm;top:1.6mm;right:1.6mm;bottom:1.6mm;border:1.5px solid #15365F;border-radius:4px;pointer-events:none}
       .wm{position:absolute;left:50%;top:54%;width:110mm;transform:translate(-50%,-50%);opacity:.045}
-      .logo{width:30mm;height:30mm}.org{font:800 15pt Manrope,Arial;letter-spacing:.14em;color:#15365F;margin-top:3mm}.est{font-size:9pt;letter-spacing:.3em;color:#9C7414;font-weight:700}
-      h1{font:700 32pt "Playfair Display",Georgia,serif;margin:6mm 0 2mm;color:#15365F}.sub{font-size:11pt;color:#5B6B82;letter-spacing:.1em;text-transform:uppercase}
-      .name{font:800 27pt Manrope,Arial;margin:5mm 0 2mm;color:#0B2141;border-bottom:1.5px solid #D7A52B;display:inline-block;padding:0 10mm 2mm}
+      .logo{width:25mm;height:25mm}.org{font:800 15pt/1.3 Manrope,Arial;letter-spacing:.14em;color:#15365F;margin-top:3mm}.est{font-size:9pt;line-height:1.5;margin-top:1mm;letter-spacing:.3em;color:#9C7414;font-weight:700}
+      h1{font:700 32pt/1.2 "Playfair Display",Georgia,serif;margin:4mm 0 0;color:#15365F}.sub{font-size:11pt;line-height:1.5;margin-top:2mm;color:#5B6B82;letter-spacing:.1em;text-transform:uppercase;padding-top:1mm}
+      .name{font:800 27pt/1.25 Manrope,Arial;margin:3mm 0 1mm;color:#0B2141;border-bottom:1.5px solid #D7A52B;display:inline-block;padding:0 10mm 3mm}
       .body{font-size:12pt;line-height:1.7;max-width:210mm;margin:3mm auto 0;color:#29466B}
-      .meta{display:flex;justify-content:center;gap:12mm;margin-top:6mm;font-size:10pt}.meta b{display:block;font-size:12pt;color:#15365F}.meta span{color:#5B6B82;text-transform:uppercase;letter-spacing:.08em;font-size:8pt}
-      .sig{position:absolute;bottom:14mm;left:22mm;right:22mm;display:flex;justify-content:space-between;align-items:flex-end;font-size:10pt}.sig div{width:60mm;border-top:1px solid #15365F;padding-top:2mm;color:#29466B}
-      .sig div.seal{width:24mm;height:24mm;border-top:0;padding:0;border-radius:50%;background:radial-gradient(circle,#FFE7A3,#D7A52B 60%,#9C7414);display:grid;place-items:center;color:#3A2A05;font:800 8pt Arial;letter-spacing:.08em;box-shadow:0 0 0 2mm rgba(215,165,43,.25)}
+      .meta{display:flex;justify-content:center;gap:12mm;margin-top:4mm;font-size:10pt}.meta b{display:block;font-size:12pt;line-height:1.4;color:#15365F}.meta span{color:#5B6B82;text-transform:uppercase;letter-spacing:.08em;font-size:8pt}
+      .sig{position:absolute;bottom:11mm;left:22mm;right:22mm;display:flex;justify-content:space-between;align-items:flex-end;font-size:10pt}.sig div{width:60mm;border-top:1px solid #15365F;padding-top:2mm;color:#29466B}
+      .sig div.seal{width:21mm;height:21mm;border-top:0;padding:0;border-radius:50%;background:radial-gradient(circle,#FFE7A3,#D7A52B 60%,#9C7414);display:grid;place-items:center;color:#3A2A05;font:800 8pt Arial;letter-spacing:.08em;box-shadow:0 0 0 2mm rgba(215,165,43,.25)}
       .ver{position:absolute;bottom:5mm;left:0;right:0;font-size:7.5pt;color:#8394AB}`;
     const html = `<div class="page"><div class="frame"><img class="wm" src="${esc(this.logo())}" alt=""><img class="logo" src="${esc(this.logo())}" alt="FPAA emblem">
       <div class="org">FALAKATA POLYTECHNIC ALUMNI ASSOCIATION</div><div class="est">ESTD 2024 · FPAA CONNECT 2.0</div>
@@ -1956,8 +1990,8 @@ const Certificates = {
       <div class="meta"><div><span>Membership No.</span><b>${esc(m.membership_no)}</b></div><div><span>Member Since</span><b>${esc(m.member_since)}</b></div><div><span>Valid Till</span><b>${esc(m.valid_till)}</b></div><div><span>Issued On</span><b>${esc(fmtDate(new Date()))}</b></div></div>
       <div class="sig"><div>President<br><small>FPAA</small></div><div class="seal">FPAA<br>SEAL</div><div>General Secretary<br><small>FPAA</small></div></div>
       <div class="ver">Verify this certificate at ${esc(verify)}</div></div></div>`;
-    printHTML("FPAA Membership Certificate — " + m.membership_no, html, css);
-    audit("Printed certificate", m.membership_no); toast("info", "Opening print dialog…", "Choose 'Save as PDF' to keep a digital copy.");
+    audit("Downloaded certificate", m.membership_no);
+    return downloadOrPrint({ title: "FPAA Membership Certificate — " + m.membership_no, file: `FPAA-Certificate-${m.membership_no}.pdf`, bodyHTML: html, css, w: 297, h: 210 });
   },
   card(m) {
     const verify = publicBaseUrl() + "#verify=" + m.membership_no;
@@ -1968,7 +2002,7 @@ const Certificates = {
       .card:before{content:"";position:absolute;right:-18mm;top:-18mm;width:50mm;height:50mm;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.22),transparent 70%)}
       .top{display:flex;gap:2.5mm;align-items:center}.top img{width:10mm;height:10mm}.top b{font-size:5.6pt;letter-spacing:.08em;line-height:1.25;display:block}.top span{font-size:4.6pt;color:#BFD6FF;letter-spacing:.14em}
       .mid{display:flex;gap:3mm;margin-top:3mm;align-items:center}.ph{width:17mm;height:20mm;border-radius:2mm;overflow:hidden;border:.6mm solid #fff;flex:none}.ph img{width:100%;height:100%;object-fit:cover}.ini{width:100%;height:100%;display:grid;place-items:center;font:800 13pt Manrope,Arial}
-      .nm{font:800 10pt Manrope,Arial;line-height:1.15}.no{font-family:Menlo,monospace;font-size:7pt;letter-spacing:.08em;color:#DCE8FF;margin-top:1mm}.cat{display:inline-block;margin-top:1.5mm;font-size:5.5pt;font-weight:800;background:linear-gradient(135deg,#F7DD8B,#D7A52B);color:#3A2A05;padding:.6mm 2mm;border-radius:3mm;letter-spacing:.06em}
+      .nm{font:800 10pt/1.2 Manrope,Arial}.no{font-family:Menlo,monospace;font-size:7pt;line-height:1.3;letter-spacing:.08em;color:#DCE8FF;margin-top:1mm}.cat{display:inline-block;margin-top:1.5mm;font-size:5.5pt;line-height:1.4;font-weight:800;background:linear-gradient(135deg,#F7DD8B,#D7A52B);color:#3A2A05;padding:.6mm 2mm;border-radius:3mm;letter-spacing:.06em}
       .ft{position:absolute;left:4mm;right:4mm;bottom:3.2mm;display:flex;justify-content:space-between;font-size:4.8pt;color:#BFD6FF;text-transform:uppercase;letter-spacing:.06em}.ft b{display:block;color:#fff;font-size:6.2pt;letter-spacing:0;text-transform:none}
       .back{background:linear-gradient(160deg,#F7FAFF,#E0E7FF);color:#0F2744}.back:before{display:none}.back .t{font:800 7pt Manrope,Arial;color:#15365F;letter-spacing:.1em}.back ul{margin:2mm 0 0;padding-left:3.5mm;font-size:5.6pt;line-height:1.5;color:#29466B}
       .back .v{position:absolute;left:4mm;right:4mm;bottom:3mm;font-size:4.8pt;color:#5B6B82;word-break:break-all}.back .sg{position:absolute;right:4mm;bottom:9mm;width:26mm;border-top:.3mm solid #15365F;font-size:5pt;text-align:center;padding-top:.8mm;color:#29466B}
@@ -1979,8 +2013,8 @@ const Certificates = {
         <div class="ft"><span>Department<b>${esc(m.department)}</b></span><span>Batch<b>${esc(m.passing_year)}</b></span><span>Valid till<b>${esc(m.valid_till)}</b></span></div></div>
       <div class="card back"><div class="stripe"></div><div class="t">MEMBER PRIVILEGES</div><ul><li>Access to FPAA Connect 2.0 member services</li><li>Alumni directory, events and career network</li><li>Eligible to vote in FPAA general meetings</li><li>This card is the property of FPAA and non-transferable</li></ul>
         <div class="sg">General Secretary</div><div class="v">Verify: ${esc(verify)}</div></div></div>`;
-    printHTML("FPAA Membership Card — " + m.membership_no, html, css);
-    audit("Printed membership card", m.membership_no); toast("info", "Opening print dialog…", "Print at 100% scale for the correct card size.");
+    audit("Downloaded membership card", m.membership_no);
+    return downloadOrPrint({ title: "FPAA Membership Card — " + m.membership_no, file: `FPAA-Membership-Card-${m.membership_no}.pdf`, bodyHTML: html, css, w: 210, h: 297, pad: 15 });
   }
 };
 /* =====================================================================
@@ -2391,14 +2425,14 @@ Actions["donation-view"] = (el) => {
   if (!mine && !can("admin.donations")) return toast("error", "Not available", "You can only view your own donations.");
   Modal.open({ title: d.donation_no, eyebrow: "Donation details", body: h`<div class="row" style="margin-bottom:14px">${statusPill(d.status)}<span class="chip gold">${fmtINR(d.amount)}</span></div>
     <dl class="kv"><dt>Purpose</dt><dd>${d.purpose}</dd><dt>Amount</dt><dd>${fmtINR(d.amount)}</dd><dt>Donor</dt><dd>${d.donor_name}</dd><dt>Email</dt><dd>${d.email}</dd><dt>Mobile</dt><dd>${can("admin.donations") ? d.mobile : maskMobileTail(d.mobile)}</dd><dt>Payment</dt><dd>${d.payment_mode || "—"} · <span class="mono">${d.payment_ref || "—"}</span></dd><dt>Date</dt><dd>${fmtDateTime(d.donated_at)}</dd>${d.message ? h`<dt>Message</dt><dd>${d.message}</dd>` : ""}${d.review_note ? h`<dt>Finance note</dt><dd>${d.review_note}</dd>` : ""}</dl>`,
-    foot: h`<button class="btn btn-ghost" data-action="modal-close">Close</button>${d.status === "Verified" ? h`<button class="btn btn-primary" data-action="donation-receipt" data-id="${d.id}">${icon("printer")}Print receipt</button>` : ""}` });
+    foot: h`<button class="btn btn-ghost" data-action="modal-close">Close</button>${d.status === "Verified" ? h`<button class="btn btn-primary" data-action="donation-receipt" data-id="${d.id}">${icon("download")}Download receipt</button>` : ""}` });
 };
 Actions["donation-receipt"] = (el) => {
   const d = API.get("donations", el.dataset.id); if (!d || d.status !== "Verified") return;
   const css = `@page{size:A5 landscape;margin:12mm}body{font-family:Inter,Arial,sans-serif;color:#0F2744;margin:0}.r{border:2px solid #15365F;border-radius:10px;padding:10mm;position:relative}.h{display:flex;gap:5mm;align-items:center;border-bottom:1px solid #D7A52B;padding-bottom:4mm}.h img{width:18mm}.h b{font:800 12pt Manrope,Arial;display:block;color:#15365F}.h span{font-size:8pt;color:#5B6B82;letter-spacing:.1em}h2{font:800 14pt Manrope,Arial;margin:5mm 0 3mm}table{width:100%;border-collapse:collapse;font-size:10pt}td{padding:2mm 0;border-bottom:1px dashed #DCE3F0}td:first-child{color:#5B6B82;width:40%}.amt{font:800 16pt Manrope,Arial;color:#15365F}.f{margin-top:6mm;font-size:8pt;color:#5B6B82;display:flex;justify-content:space-between}`;
-  printHTML("Donation receipt " + d.donation_no, `<div class="r"><div class="h"><img src="${esc(Certificates.logo())}" alt=""><div><b>FALAKATA POLYTECHNIC ALUMNI ASSOCIATION</b><span>FPAA CONNECT 2.0 · DONATION RECEIPT</span></div></div><h2>Receipt ${esc(d.donation_no)}</h2>
+  downloadOrPrint({ title: "Donation receipt " + d.donation_no, file: `FPAA-Donation-Receipt-${d.donation_no}.pdf`, w: 210, h: 148, pad: 12, css, bodyHTML: `<div class="r"><div class="h"><img src="${esc(Certificates.logo())}" alt=""><div><b>FALAKATA POLYTECHNIC ALUMNI ASSOCIATION</b><span>FPAA CONNECT 2.0 · DONATION RECEIPT</span></div></div><h2>Receipt ${esc(d.donation_no)}</h2>
     <table><tr><td>Received from</td><td><b>${esc(d.donor_name)}</b></td></tr><tr><td>Purpose</td><td>${esc(d.purpose)}</td></tr><tr><td>Amount</td><td class="amt">${esc(fmtINR(d.amount))}</td></tr><tr><td>Payment</td><td>${esc(d.payment_mode || "")} · ${esc(d.payment_ref || "")}</td></tr><tr><td>Date</td><td>${esc(fmtDate(d.donated_at))}</td></tr><tr><td>Status</td><td>Verified by Finance Committee</td></tr></table>
-    <div class="f"><span>Thank you for supporting FPAA.</span><span>Generated ${esc(fmtDate(new Date()))}</span></div></div>`, css);
+    <div class="f"><span>Thank you for supporting FPAA.</span><span>Generated ${esc(fmtDate(new Date()))}</span></div></div>` });
 };
 /* =====================================================================
    ACHIEVEMENTS
@@ -3086,7 +3120,7 @@ const AdminOps = {
     } else if (payOk && member.status !== "Active") await API.update("members", member.id, { status: "Active", category: a.category });
     await API.update("membership_applications", a.id, { status: payOk ? "Verified" : "Approved", reviewed_at: new Date().toISOString(), member_id: member.id });
     audit("Approved membership application", a.application_no);
-    if (a.user_id) notify(a.user_id, "membership", payOk ? "Membership activated" : "Application approved", payOk ? `${member.membership_no} is now active. Print your certificate from My FPAA.` : `${a.application_no} approved — membership activates after payment verification.`, "#my-fpaa");
+    if (a.user_id) notify(a.user_id, "membership", payOk ? "Membership activated" : "Application approved", payOk ? `${member.membership_no} is now active. Download your certificate from My FPAA.` : `${a.application_no} approved — membership activates after payment verification.`, "#my-fpaa");
     Auth.bindMember(); return member;
   },
   async verifyPayment(pay, app) {
@@ -3150,8 +3184,8 @@ AdminLists.members = () => {
 Actions["adm-member-preview"] = (el) => {
   const m = API.get("members", el.dataset.id); if (!m) return;
   Modal.open({ title: "Membership card preview", eyebrow: m.membership_no, body: h`<div class="member-mini-card"><div class="mc-top"><img src="${CONFIG.LOGO_URL}" alt=""><div><b>FALAKATA POLYTECHNIC<br>ALUMNI ASSOCIATION</b><span>FPAA CONNECT 2.0 · MEMBER</span></div></div><div><div class="chipline"></div></div><div><div class="mc-name">${m.full_name}</div><div class="mc-no">${m.membership_no}</div></div><div class="mc-foot"><span>Category<b>${m.category.replace(" Membership", "")}</b></span><span>Batch<b>${m.passing_year}</b></span><span>Valid till<b>${m.valid_till}</b></span></div></div>
-    <div style="margin-top:14px" class="row">${statusPill(m.status)}<span class="small muted">Certificate and card can be printed only for active members.</span></div>`,
-    foot: h`<button class="btn btn-ghost" data-action="modal-close">Close</button>${ab("print-certificate", m.id, "Print Certificate", "certificate", "btn-primary", m.status === "Active" ? "" : "disabled")}${ab("print-card", m.id, "Print Membership Card", "printer", "btn-gold", m.status === "Active" ? "" : "disabled")}` });
+    <div style="margin-top:14px" class="row">${statusPill(m.status)}<span class="small muted">Certificate and card can be downloaded only for active members.</span></div>`,
+    foot: h`<button class="btn btn-ghost" data-action="modal-close">Close</button>${ab("print-certificate", m.id, "Download Certificate", "certificate", "btn-primary", m.status === "Active" ? "" : "disabled")}${ab("print-card", m.id, "Download Membership Card", "printer", "btn-gold", m.status === "Active" ? "" : "disabled")}` });
 };
 Actions["adm-member-edit"] = (el) => {
   const m = API.get("members", el.dataset.id); if (!m) return;
