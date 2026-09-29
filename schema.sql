@@ -118,6 +118,9 @@ create table if not exists public.audit_logs (
 create table if not exists public.member_chat_messages (
   id uuid primary key default gen_random_uuid(), conversation_id text not null, sender_id uuid, sender_name text, body text not null check (length(body) <= 1000), created_at timestamptz default now()
 );
+-- Community chat extras: reply to a message and tagged (@mentioned) members
+alter table public.member_chat_messages add column if not exists reply_to uuid references public.member_chat_messages(id) on delete set null;
+alter table public.member_chat_messages add column if not exists mentions uuid[] default '{}';
 create table if not exists public.chat_read_receipts (
   id uuid primary key default gen_random_uuid(), message_id uuid references public.member_chat_messages(id) on delete cascade, user_id uuid, read_at timestamptz default now(), created_at timestamptz default now()
 );

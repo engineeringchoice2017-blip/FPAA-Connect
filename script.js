@@ -124,6 +124,9 @@ const ICON_PATHS = {
   ban: '<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>',
   arrowL: '<path d="M19 12H5M11 18l-6-6 6-6"/>',
   sort: '<path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/>',
+  reply: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  smile: '<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5s1.3 1.8 3.5 1.8 3.5-1.8 3.5-1.8"/><path d="M9 9.5h.01M15 9.5h.01" stroke-width="3"/>',
+  at: '<circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/>',
   instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".6" fill="currentColor"/>',
   youtube: '<rect x="2.5" y="5.5" width="19" height="13" rx="4"/><path d="m10 9.2 5 2.8-5 2.8z" fill="currentColor"/>',
   facebook: '<path d="M14.5 21v-7.5h2.6l.4-3h-3v-2c0-.9.3-1.5 1.6-1.5h1.5V4.3c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8v2.5H9.2v3h2.5V21"/>',
@@ -717,7 +720,7 @@ const S = {
     admin: {},
     accessMsg: null
   },
-  chat: { conv: "community", tab: "chats", q: "", typing: {}, presence: {} },
+  chat: { conv: "community", tab: "chats", q: "", typing: {}, presence: {}, replyTo: null, mentions: {} },
   galleryTimer: null, galleryIdx: 0,
   timers: []
 };
@@ -2973,6 +2976,36 @@ const Chat = {
         <span class="ci-body"><span class="ci-top"><b>${title}</b><span>${c.last ? fmtTime(c.last.created_at) : ""}</span></span><span class="ci-last"><span>${c.last ? (c.last.sender_id === this.me() ? "You: " : c.id === "community" ? c.last.sender_name.split(" ")[0] + ": " : "") + c.last.body : "No messages yet"}</span>${c.unread ? h`<span class="badge">${c.unread}</span>` : ""}</span></span></button>`; });
   },
   renderSide() { const el = $("#chatList"); if (el) setHTML(el, this.sideList()); },
+  /* ---- Tags (@mentions), replies and "seen by" ---- */
+  seenBy(msgId) { const me = this.me(); const seen = new Map(); API.all("chat_read_receipts").filter((r) => r.message_id === msgId && r.user_id !== me).forEach((r) => { if (!seen.has(r.user_id)) seen.set(r.user_id, r); }); return [...seen.values()]; },
+  mentionsMe(m) { return Array.isArray(m.mentions) && m.mentions.includes(this.me()); },
+  snippet(t, n = 70) { t = String(t || "").replace(/\s+/g, " ").trim(); return t.length > n ? t.slice(0, n - 1) + "…" : t; },
+  quoteHTML(id) {
+    const q = API.get("member_chat_messages", id);
+    if (!q) return h`<span class="msg-quote missing">Original message not available</span>`;
+    return h`<button type="button" class="msg-quote" data-action="chat-jump" data-id="${q.id}"><b>${q.sender_id === this.me() ? "You" : this.senderLabel(q).name}</b><span>${this.snippet(q.body)}</span></button>`;
+  },
+  /* Message text with tagged members highlighted. Everything stays escaped — only the highlight span is markup. */
+  bodyHTML(m) {
+    const names = (Array.isArray(m.mentions) ? m.mentions : []).map((id) => { const mm = API.get("members", id); return mm ? { id, tag: "@" + mm.full_name } : null; }).filter(Boolean).sort((a, b) => b.tag.length - a.tag.length);
+    if (!names.length) return m.body;
+    const parts = []; let rest = String(m.body);
+    while (rest.length) {
+      let best = null; names.forEach((n) => { const i = rest.indexOf(n.tag); if (i >= 0 && (!best || i < best.i)) best = { i, n }; });
+      if (!best) { parts.push(rest); break; }
+      parts.push(rest.slice(0, best.i)); parts.push(h`<span class="mention ${best.n.id === this.me() ? "me" : ""}">${best.n.tag}</span>`); rest = rest.slice(best.i + best.n.tag.length);
+    }
+    return parts;
+  },
+  mentionCandidates(q) {
+    q = q.toLowerCase(); const me = this.me();
+    return API.all("members").filter((m) => m.status === "Active" && m.id !== me && m.full_name.toLowerCase().split(/\s+/).concat(m.full_name.toLowerCase()).some((w) => w.startsWith(q))).sort((a, b) => a.full_name.localeCompare(b.full_name)).slice(0, 6);
+  },
+  replyBarHTML() {
+    const q = S.chat.replyTo && API.get("member_chat_messages", S.chat.replyTo); if (!q) return "";
+    return h`<div class="chat-replybar">${icon("reply", "ico ico-sm")}<div class="grow" style="min-width:0"><b>Replying to ${q.sender_id === this.me() ? "yourself" : this.senderLabel(q).name}</b><span>${this.snippet(q.body, 90)}</span></div><button type="button" class="icon-btn" data-action="chat-reply-cancel" aria-label="Cancel reply" style="width:30px;height:30px">${icon("x", "ico ico-sm")}</button></div>`;
+  },
+  EMOJIS: ["😀", "😂", "🤣", "😊", "😍", "🥰", "😎", "🤩", "😇", "🙂", "😉", "🤗", "🤔", "😅", "😢", "😭", "😡", "😮", "🙏", "👍", "👎", "👏", "🙌", "💪", "🤝", "👋", "✌️", "👌", "❤️", "💙", "💛", "💚", "🔥", "🎉", "🎊", "🎂", "🎓", "🏆", "🥇", "⭐", "✨", "💯", "✅", "📌", "📅", "📷", "📚", "💼", "🏫", "🇮🇳"],
   msgsHTML() {
     const conv = S.chat.conv; const msgs = this.messages(conv); const me = this.me();
     if (!msgs.length) return h`<div class="chat-empty"><div><span class="ico-tile soft" style="margin:0 auto 10px">${icon("chat")}</span><b>Say hello 👋</b><p class="small">Messages in this conversation are visible only to FPAA members.</p></div></div>`;
@@ -2982,7 +3015,10 @@ const Chat = {
       const mine = m.sender_id === me;
       let ticks = "";
       if (mine) { const others = API.all("chat_read_receipts").filter((r) => r.message_id === m.id && r.user_id !== me); const read = others.length > 0; ticks = h`<svg class="ticks ${read ? "read" : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-label="${read ? "Read" : "Delivered"}">${raw(ICON_PATHS.checks)}</svg>`; }
-      out.push(h`<div class="msg ${mine ? "me" : ""}"><div class="mb">${!mine ? (() => { const L = this.senderLabel(m); return h`<span class="from">${L.name}${L.extra ? h`<small>${L.extra}</small>` : ""}</span>`; })() : ""}${m.body}</div><div class="mt">${fmtTime(m.created_at)}${ticks}</div></div>`);
+      const seen = mine ? this.seenBy(m.id).length : 0;
+      const quote = m.reply_to ? this.quoteHTML(m.reply_to) : "";
+      out.push(h`<div class="msg ${mine ? "me" : ""} ${this.mentionsMe(m) ? "tagged" : ""}" id="msg-${m.id}"><div class="mb">${!mine ? (() => { const L = this.senderLabel(m); return h`<span class="from">${L.name}${L.extra ? h`<small>${L.extra}</small>` : ""}</span>`; })() : ""}${quote}${this.bodyHTML(m)}</div>
+        <div class="mt">${fmtTime(m.created_at)}${ticks}${mine ? h`<button type="button" class="mt-btn" data-action="chat-seen" data-id="${m.id}" aria-label="See who has seen this message">${icon("eye", "ico")}${seen ? `Seen by ${seen}` : "Not seen yet"}</button>` : ""}<button type="button" class="mt-btn" data-action="chat-reply" data-id="${m.id}" aria-label="Reply to this message">${icon("reply", "ico")}Reply</button></div></div>`);
     });
     return out;
   },
@@ -2996,22 +3032,66 @@ const Chat = {
     const w = $("#chatWindow");
     w.classList.add("community-only", "show-conv");
     setHTML(w, h`<section class="chat-main"><header class="chat-head" id="chatHead">${this.headHTML()}</header><div class="chat-msgs" id="chatMsgs" aria-live="polite">${this.msgsHTML()}</div>
-        <form class="chat-compose" data-submit="chat-send"><label class="sr-only" for="chatInput">Message</label><textarea class="textarea" id="chatInput" rows="1" maxlength="1000" placeholder="Write a message…"></textarea><button class="btn btn-primary" type="submit" aria-label="Send message">${icon("send")}</button></form></section>`);
-    const t = $("#chatInput"); t.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); t.form.requestSubmit(); } });
-    t.addEventListener("input", () => { t.style.height = "auto"; t.style.height = Math.min(120, t.scrollHeight) + "px"; });
+        <div class="chat-compose-wrap"><div id="chatReplyBar">${this.replyBarHTML()}</div>
+          <div class="chat-pop chat-mention" id="chatMention" role="listbox" aria-label="Tag a member" hidden></div>
+          <div class="chat-pop chat-emoji" id="chatEmoji" aria-label="Emoji" hidden>${this.EMOJIS.map((e) => h`<button type="button" data-action="chat-emoji-pick" data-e="${e}" aria-label="${e}">${e}</button>`)}</div>
+          <form class="chat-compose" data-submit="chat-send"><button type="button" class="icon-btn chat-tool" data-action="chat-emoji" aria-label="Insert emoji" aria-controls="chatEmoji">${icon("smile")}</button><button type="button" class="icon-btn chat-tool" data-action="chat-tag" aria-label="Tag a member">${icon("at")}</button><label class="sr-only" for="chatInput">Message</label><textarea class="textarea" id="chatInput" rows="1" maxlength="1000" placeholder="Message… @ to tag"></textarea><button class="btn btn-primary" type="submit" aria-label="Send message">${icon("send")}</button></form></div></section>`);
+    if (!w.dataset.bound) w.dataset.bound = "1", w.addEventListener("click", (e) => { const p = $("#chatEmoji"); if (p && !p.hidden && !e.target.closest("#chatEmoji, [data-action='chat-emoji']")) p.hidden = true; if (!e.target.closest("#chatMention, #chatInput")) this.hideMention(); });
+    const t = $("#chatInput");
+    t.addEventListener("keydown", (e) => {
+      const list = $("#chatMention");
+      if (list && !list.hidden) {
+        const items = $$("button", list); let i = items.findIndex((b) => b.classList.contains("active"));
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); i = (i + (e.key === "ArrowDown" ? 1 : -1) + items.length) % items.length; items.forEach((b, k) => b.classList.toggle("active", k === i)); return; }
+        if ((e.key === "Enter" || e.key === "Tab") && items.length) { e.preventDefault(); this.pickMention((items[i] || items[0]).dataset.id); return; }
+        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); this.hideMention(); return; }
+      }
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); t.form.requestSubmit(); }
+    });
+    t.addEventListener("input", () => { t.style.height = "auto"; t.style.height = Math.min(120, t.scrollHeight) + "px"; this.updateMention(); });
+    t.addEventListener("click", () => this.updateMention());
     this.scrollBottom();
   },
+  /* The "@word" being typed just before the cursor, if any. */
+  mentionQuery() { const t = $("#chatInput"); if (!t) return null; const before = t.value.slice(0, t.selectionStart); const m = before.match(/(^|\s)@([^\s@]{0,20}(?: [^\s@]{0,20})?)$/); return m ? { q: m[2], start: before.length - m[2].length - 1 } : null; },
+  updateMention() {
+    const list = $("#chatMention"); if (!list) return; const mq = this.mentionQuery();
+    const found = mq ? this.mentionCandidates(mq.q) : [];
+    if (!mq || !found.length) return this.hideMention();
+    setHTML(list, found.map((m, i) => h`<button type="button" role="option" class="${i === 0 ? "active" : ""}" data-action="chat-mention-pick" data-id="${m.id}">${avatar(m.full_name, m.photo, "sm")}<span><b>${m.full_name}</b><small>${m.department} · Batch ${m.passing_year}</small></span></button>`));
+    list.hidden = false; const em = $("#chatEmoji"); if (em) em.hidden = true;
+  },
+  hideMention() { const l = $("#chatMention"); if (l) l.hidden = true; },
+  pickMention(id) {
+    const m = API.get("members", id); const t = $("#chatInput"); if (!m || !t) return;
+    const mq = this.mentionQuery(); const pos = t.selectionStart; const start = mq ? mq.start : pos;
+    const tag = "@" + m.full_name + " "; t.value = t.value.slice(0, start) + tag + t.value.slice(pos);
+    const c = start + tag.length; t.setSelectionRange(c, c); t.focus();
+    S.chat.mentions = S.chat.mentions || {}; S.chat.mentions[m.id] = m.full_name;
+    this.hideMention(); t.dispatchEvent(new Event("input"));
+  },
+  insertAtCursor(text) { const t = $("#chatInput"); if (!t) return; const a = t.selectionStart ?? t.value.length, b = t.selectionEnd ?? a; t.value = t.value.slice(0, a) + text + t.value.slice(b); const c = a + text.length; t.setSelectionRange(c, c); t.focus(); t.dispatchEvent(new Event("input")); },
+  jumpTo(id) { const el = document.getElementById("msg-" + id); if (!el) return; el.scrollIntoView({ behavior: "smooth", block: "center" }); el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash"); },
   refreshConv() { const m = $("#chatMsgs"); if (!m) return; setHTML(m, this.msgsHTML()); setHTML($("#chatHead"), this.headHTML()); this.renderSide(); this.scrollBottom(); },
   scrollBottom() { const m = $("#chatMsgs"); if (m) m.scrollTop = m.scrollHeight; },
   send(body) {
     const me = this.me(); const conv = S.chat.conv;
-    const msg = API.quiet("member_chat_messages", { conversation_id: conv, sender_id: me, sender_name: S.member ? S.member.full_name : S.profile.full_name, body });
+    // Keep only the tags whose "@Full Name" is still in the text
+    const mentions = Object.entries(S.chat.mentions || {}).filter(([, name]) => body.includes("@" + name)).map(([id]) => id);
+    const row = { conversation_id: conv, sender_id: me, sender_name: S.member ? S.member.full_name : S.profile.full_name, body };
+    if (S.chat.replyTo) row.reply_to = S.chat.replyTo;
+    if (mentions.length) row.mentions = mentions;
+    const msg = API.quiet("member_chat_messages", row);
+    S.chat.replyTo = null; S.chat.mentions = {}; const rb = $("#chatReplyBar"); if (rb) setHTML(rb, "");
+    const myName = row.sender_name;
+    mentions.forEach((id) => { const m = API.get("members", id); if (m && m.user_id) notify(m.user_id, "chat", `${myName} tagged you in Community Chat`, this.snippet(body, 90), "#chat/" + msg.id); });
     this.refreshConv();
     // Realtime-style simulation (demo mode): recipients read, type and reply
     if (API.mode !== "demo") return;
     const other = conv === "community" ? API.all("members").filter((m) => m.status === "Active" && m.id !== me)[Math.floor(Math.random() * 100)] : API.get("members", this.otherOf(conv));
     if (!other) return;
-    setTimeout(() => { API.quiet("chat_read_receipts", { message_id: msg.id, user_id: other.id, read_at: new Date().toISOString() }); if (document.body.classList.contains("chat-open") && S.chat.conv === conv) this.refreshConv(); }, 1400);
+    const readers = [other].concat(API.all("members").filter((m) => m.status === "Active" && m.id !== me && m.id !== other.id).sort(() => Math.random() - 0.5).slice(0, 2 + Math.floor(Math.random() * 4)));
+    readers.forEach((r, k) => setTimeout(() => { API.quiet("chat_read_receipts", { message_id: msg.id, user_id: r.id, read_at: new Date().toISOString() }); if (document.body.classList.contains("chat-open") && S.chat.conv === conv) this.refreshConv(); }, 1400 + k * 900));
     if (conv !== "community" || Math.random() < 0.5) {
       setTimeout(() => { S.chat.typing[conv] = true; if (S.chat.conv === conv) setHTML($("#chatHead"), this.headHTML()); }, 1900);
       setTimeout(() => {
@@ -3030,6 +3110,21 @@ Actions["chat-tab"] = (el) => { S.chat.tab = el.dataset.tab; Chat.render(); };
 Actions["chat-conv"] = (el) => { S.chat.conv = el.dataset.conv; $("#chatWindow").classList.add("show-conv"); Chat.refreshConv(); Chat.markRead(S.chat.conv); };
 Actions["chat-back"] = () => { $("#chatWindow").classList.remove("show-conv"); Chat.renderSide(); };
 Actions["chat-dm"] = () => { Modal.close(); Chat.open("community"); }; // personal chat removed — opens the community chat
+Actions["chat-reply"] = (el) => { S.chat.replyTo = el.dataset.id; setHTML($("#chatReplyBar"), Chat.replyBarHTML()); const t = $("#chatInput"); if (t) t.focus(); };
+Actions["chat-reply-cancel"] = () => { S.chat.replyTo = null; setHTML($("#chatReplyBar"), ""); };
+Actions["chat-jump"] = (el) => Chat.jumpTo(el.dataset.id);
+Actions["chat-emoji"] = () => { const p = $("#chatEmoji"); if (!p) return; p.hidden = !p.hidden; Chat.hideMention(); };
+Actions["chat-emoji-pick"] = (el) => { Chat.insertAtCursor(el.dataset.e); const p = $("#chatEmoji"); if (p) p.hidden = true; };
+Actions["chat-tag"] = () => { const t = $("#chatInput"); if (!t) return; const before = t.value.slice(0, t.selectionStart ?? t.value.length); Chat.insertAtCursor(before && !/\s$/.test(before) ? " @" : "@"); };
+Actions["chat-mention-pick"] = (el) => Chat.pickMention(el.dataset.id);
+Actions["chat-seen"] = (el) => {
+  const m = API.get("member_chat_messages", el.dataset.id); if (!m) return;
+  const list = Chat.seenBy(m.id).sort((a, b) => String(b.read_at).localeCompare(String(a.read_at)));
+  Modal.open({ title: "Seen by", eyebrow: `${list.length} member${list.length === 1 ? "" : "s"}`,
+    body: h`<div class="msg-quote static"><b>Your message</b><span>${Chat.snippet(m.body, 140)}</span></div>
+      ${list.length ? h`<div class="seen-list">${list.map((r) => { const mm = API.get("members", r.user_id); const name = mm ? mm.full_name : "FPAA Member"; return h`<div class="seen-row">${avatar(name, mm && mm.photo, "sm")}<span class="grow"><b>${name}</b><small>${mm ? `${mm.department} · Batch ${mm.passing_year}` : ""}</small></span><span class="small muted">${fmtTime(r.read_at || r.created_at)}</span></div>`; })}</div>` : emptyState("No one has seen this yet.", "", "eye")}`,
+    foot: h`<button class="btn btn-ghost" data-action="modal-close">Close</button>` });
+};
 Actions["chat-send"] = (form) => { const t = $("#chatInput"); const body = t.value.trim(); if (!body) { t.focus(); return; } if (body.length > 1000) return toast("error", "Message too long", "Keep messages under 1000 characters."); t.value = ""; t.style.height = "auto"; Chat.send(body); t.focus(); };
 
 /* =====================================================================
@@ -3114,7 +3209,7 @@ const Notifications = {
   },
   isRead(n) { return (n.read_by || []).includes(S.profile.id); },
   unreadCount() { return this.visible().filter((n) => !this.isRead(n)).length; },
-  icon(t) { return { membership: ["idcard", ""], donation: ["heart", "gold"], event: ["calendar", "violet"], job: ["briefcase", ""], support: ["support", "teal"], notice: ["megaphone", "gold"], achievement: ["trophy", "gold"], scheme: ["school", "violet"], memory: ["image", "teal"] }[t] || ["bell", ""]; },
+  icon(t) { return { membership: ["idcard", ""], donation: ["heart", "gold"], event: ["calendar", "violet"], job: ["briefcase", ""], support: ["support", "teal"], notice: ["megaphone", "gold"], achievement: ["trophy", "gold"], scheme: ["school", "violet"], memory: ["image", "teal"], chat: ["chat", "violet"] }[t] || ["bell", ""]; },
   body() {
     const list = this.visible();
     if (!list.length) return emptyState("No notifications.", "You're all caught up.", "bell");
@@ -3136,7 +3231,8 @@ Actions["notif-open"] = () => {
 Actions["notif-read"] = async (el) => {
   const n = API.get("notifications", el.dataset.id); if (!n) return;
   await Notifications.mark([n.id]);
-  if (n.link) { Modal.close(); Router.go(n.link); } else setHTML($("#notifBody"), Notifications.body());
+  if (n.link && n.link.startsWith("#chat")) { Modal.close(); Chat.open(); const id = n.link.split("/")[1]; if (id) setTimeout(() => Chat.jumpTo(id), 350); }
+  else if (n.link) { Modal.close(); Router.go(n.link); } else setHTML($("#notifBody"), Notifications.body());
 };
 Actions["notif-read-all"] = (el) => busy(el, "Updating…", async () => { await Notifications.mark(Notifications.visible().map((n) => n.id)); setHTML($("#notifBody"), Notifications.body()); toast("success", "All notifications marked as read"); });
 /* =====================================================================
