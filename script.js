@@ -1495,6 +1495,12 @@ const Nav = {
           <button data-action="footer-contact">Contact</button><button data-action="go" data-to="#notices">Notices</button>
           <button data-action="footer-privacy">Privacy</button><button data-action="footer-terms">Terms</button>
         </nav></div>
+      <div class="ft-contact" aria-label="Contact FPAA">
+        ${CONFIG.CONTACT_EMAIL ? h`<a href="mailto:${CONFIG.CONTACT_EMAIL}">${icon("mail", "ico ico-sm")}<span class="break">${CONFIG.CONTACT_EMAIL}</span></a>` : ""}
+        <a href="${publicBaseUrl()}">${icon("globe", "ico ico-sm")}<span>${(CONFIG.WEBSITE || publicBaseUrl()).replace(/^https?:\/\//, "").replace(/\/index\.html.*$/, "").replace(/\/$/, "")}</span></a>
+        ${CONFIG.CONTACT_PHONE ? h`<a href="tel:${CONFIG.CONTACT_PHONE.replace(/[^\d+]/g, "")}">${icon("phone", "ico ico-sm")}<span>${CONFIG.CONTACT_PHONE}</span></a>` : ""}
+        ${CONFIG.CONTACT_ADDRESS ? h`<span>${icon("pin", "ico ico-sm")}<span>${CONFIG.CONTACT_ADDRESS}</span></span>` : ""}
+      </div>
       <div class="ft-copy"><span>© ${new Date().getFullYear()} Falakata Polytechnic Alumni Association · ESTD 2024${CONFIG.REGISTRATION_NO ? ` · Reg. No. ${CONFIG.REGISTRATION_NO}` : ""}</span><span>${API.mode === "demo" ? "Demo mode — sample data only" : "Official FPAA Connect 2.0 platform"}</span></div>`);
   },
   all() { this.renderSidebar(); this.renderTopbar(); this.renderFooter(); }
