@@ -26,12 +26,18 @@ window.FPAA_CONFIG = {
 
   // Official details shown in the footer, About page, Home contact panel and certificate
   // (from the FPAA rule books). Leave CONTACT_PHONE empty to hide the phone row.
-  CONTACT_EMAIL: "falakatapolytechnicalumni@gmail.com",
+  CONTACT_EMAIL: "office@fpaaconnect.co.in",
   CONTACT_PHONE: "",
   CONTACT_ADDRESS: "Baganbari, Falakata, Dist - Alipurduar, West Bengal – 735211",
   REGISTRATION_NO: "S0058184 of 2025-26",
-  // Website printed on the certificate. Leave empty to use the address the app is opened from.
-  WEBSITE: "",
+  // Official website (footer button, certificate). Leave empty to use the address the app is opened from.
+  WEBSITE: "https://www.fpaaconnect.co.in",
+  // Official social media pages (footer buttons). Leave a value empty to hide that button.
+  SOCIAL: {
+    instagram: "https://www.instagram.com/falakatapolytechnicalumni",
+    youtube: "https://www.youtube.com/@Falpol2Alumni",
+    facebook: "https://www.facebook.com/search/top?q=Falakata%20Polytechnic%20Alumni%20Association"
+  },
 
   // Memories — photo albums kept on Google Drive (no storage used by the app).
   // Each folder must be shared as "Anyone with the link can view".

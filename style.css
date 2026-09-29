@@ -1172,3 +1172,15 @@ a.ct-row:hover { text-decoration: none; box-shadow: var(--shadow-soft); }
 .site-footer .ft-links { flex-wrap: wrap; gap: 8px 14px; }
 @media (max-width: 720px) { .site-footer .ft-contact { flex-direction: column; align-items: flex-start; gap: 10px; } }
 @media (min-width: 981px) { .site-footer .ft-inner { grid-template-columns: minmax(0, 1fr) auto; } }
+
+/* ===================== 34. Social buttons ===================== */
+.social-links { display: flex; flex-wrap: wrap; gap: 8px; }
+.social-btn { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; font-size: .82rem; font-weight: 700; text-decoration: none; border: 1px solid var(--border); background: rgba(255, 255, 255, .7); color: var(--navy); transition: transform var(--t-fast, .15s), background .15s; }
+.social-btn:hover { transform: translateY(-2px); }
+.social-btn.s-instagram .ico { color: #D6297A; } .social-btn.s-youtube .ico { color: #E62117; } .social-btn.s-facebook .ico { color: #1877F2; }
+.modal-social { margin-top: 14px; }
+.site-footer .ft-social { margin-left: auto; }
+.site-footer .ft-social .social-btn { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .22); color: #fff; }
+.site-footer .ft-social .social-btn:hover { background: rgba(255, 255, 255, .2); }
+.site-footer .ft-social .social-btn .ico { color: #fff; }
+@media (max-width: 720px) { .site-footer .ft-social { margin-left: 0; } }

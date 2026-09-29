@@ -16,7 +16,7 @@
 
 const CONFIG = Object.assign({
   SUPABASE_URL: "", SUPABASE_ANON_KEY: "", LOGO_URL: "assets/fpaa-logo.png",
-  PUBLIC_SITE_URL: "", CONTACT_EMAIL: "", CONTACT_PHONE: "", CONTACT_ADDRESS: "", REGISTRATION_NO: "", WEBSITE: "",
+  PUBLIC_SITE_URL: "", CONTACT_EMAIL: "", CONTACT_PHONE: "", CONTACT_ADDRESS: "", REGISTRATION_NO: "", WEBSITE: "", SOCIAL: {},
   MEMORY_DRIVE_FOLDERS: []
 }, window.FPAA_CONFIG || {});
 
@@ -124,6 +124,9 @@ const ICON_PATHS = {
   ban: '<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>',
   arrowL: '<path d="M19 12H5M11 18l-6-6 6-6"/>',
   sort: '<path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/>',
+  instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r=".6" fill="currentColor"/>',
+  youtube: '<rect x="2.5" y="5.5" width="19" height="13" rx="4"/><path d="m10 9.2 5 2.8-5 2.8z" fill="currentColor"/>',
+  facebook: '<path d="M14.5 21v-7.5h2.6l.4-3h-3v-2c0-.9.3-1.5 1.6-1.5h1.5V4.3c-.3 0-1.2-.1-2.2-.1-2.2 0-3.7 1.3-3.7 3.8v2.5H9.2v3h2.5V21"/>',
   certificate: '<rect x="3" y="4" width="18" height="13" rx="2"/><circle cx="16" cy="15" r="3"/><path d="m14.5 17.5-1 4 2.5-1.5 2.5 1.5-1-4M7 8h10M7 11.5h5"/>'
 };
 function icon(name, cls = "ico") {
@@ -506,6 +509,12 @@ function printHTML(title, bodyHTML, css) {
   if (!pending) setTimeout(go, 350);
   else imgs.forEach((im) => { const fin = () => { if (--pending === 0) setTimeout(go, 250); }; if (im.complete) fin(); else { im.onload = fin; im.onerror = fin; } });
   setTimeout(() => { if (pending > 0) { pending = 0; go(); } }, 2500);
+}
+/* Official website: display text (no protocol) and link. */
+function siteLink() { const url = CONFIG.WEBSITE || publicBaseUrl(); return { url, text: url.replace(/^https?:\/\//, "").replace(/\/index\.html.*$/, "").replace(/\/$/, "") }; }
+function socialLinks(cls = "") {
+  const S2 = CONFIG.SOCIAL || {}, L = [["instagram", "Instagram"], ["youtube", "YouTube"], ["facebook", "Facebook"]].filter(([k]) => S2[k]);
+  return L.length ? h`<div class="social-links ${cls}">${L.map(([k, n]) => h`<a class="social-btn s-${k}" href="${S2[k]}" target="_blank" rel="noopener" aria-label="FPAA on ${n}" title="${n}">${icon(k, "ico ico-sm")}<span>${n}</span></a>`)}</div>` : "";
 }
 /* ---------- Real PDF download (works on mobile, where print dialogs from iframes fail) ---------- */
 const PDF_LIBS = ["assets/vendor/html2canvas.min.js", "assets/vendor/jspdf.umd.min.js"]; // html2canvas 1.4.1 + jsPDF 2.5.1 (MIT), bundled locally
@@ -1497,9 +1506,10 @@ const Nav = {
         </nav></div>
       <div class="ft-contact" aria-label="Contact FPAA">
         ${CONFIG.CONTACT_EMAIL ? h`<a href="mailto:${CONFIG.CONTACT_EMAIL}">${icon("mail", "ico ico-sm")}<span class="break">${CONFIG.CONTACT_EMAIL}</span></a>` : ""}
-        <a href="${publicBaseUrl()}">${icon("globe", "ico ico-sm")}<span>${(CONFIG.WEBSITE || publicBaseUrl()).replace(/^https?:\/\//, "").replace(/\/index\.html.*$/, "").replace(/\/$/, "")}</span></a>
+        <a href="${siteLink().url}" target="_blank" rel="noopener">${icon("globe", "ico ico-sm")}<span>${siteLink().text}</span></a>
         ${CONFIG.CONTACT_PHONE ? h`<a href="tel:${CONFIG.CONTACT_PHONE.replace(/[^\d+]/g, "")}">${icon("phone", "ico ico-sm")}<span>${CONFIG.CONTACT_PHONE}</span></a>` : ""}
         ${CONFIG.CONTACT_ADDRESS ? h`<span>${icon("pin", "ico ico-sm")}<span>${CONFIG.CONTACT_ADDRESS}</span></span>` : ""}
+        ${socialLinks("ft-social")}
       </div>
       <div class="ft-copy"><span>© ${new Date().getFullYear()} Falakata Polytechnic Alumni Association · ESTD 2024${CONFIG.REGISTRATION_NO ? ` · Reg. No. ${CONFIG.REGISTRATION_NO}` : ""}</span><span>${API.mode === "demo" ? "Demo mode — sample data only" : "Official FPAA Connect 2.0 platform"}</span></div>`);
   },
@@ -1514,7 +1524,8 @@ Actions["modal-close"] = () => Modal.close();
 Actions["logout"] = async () => { if (await confirmDialog({ title: "Log out of FPAA Connect 2.0?", message: "You will need to sign in again to access member services.", confirmText: "Log out" })) Auth.logout(); };
 Actions["footer-contact"] = () => Modal.open({
   title: "Contact FPAA", eyebrow: "Falakata Polytechnic Alumni Association",
-  body: h`<dl class="kv"><dt>Email</dt><dd>${CONFIG.CONTACT_EMAIL ? h`<a href="mailto:${CONFIG.CONTACT_EMAIL}">${CONFIG.CONTACT_EMAIL}</a>` : "—"}</dd>${CONFIG.CONTACT_PHONE ? h`<dt>Phone</dt><dd>${CONFIG.CONTACT_PHONE}</dd>` : ""}<dt>Address</dt><dd>${CONFIG.CONTACT_ADDRESS || "—"}</dd>${CONFIG.REGISTRATION_NO ? h`<dt>Registration No.</dt><dd>${CONFIG.REGISTRATION_NO}</dd>` : ""}<dt>Office hours</dt><dd>Mon – Sat, 10:00 AM – 5:00 PM</dd></dl>
+  body: h`<dl class="kv"><dt>Email</dt><dd>${CONFIG.CONTACT_EMAIL ? h`<a href="mailto:${CONFIG.CONTACT_EMAIL}">${CONFIG.CONTACT_EMAIL}</a>` : "—"}</dd>${CONFIG.CONTACT_PHONE ? h`<dt>Phone</dt><dd>${CONFIG.CONTACT_PHONE}</dd>` : ""}<dt>Address</dt><dd>${CONFIG.CONTACT_ADDRESS || "—"}</dd>${CONFIG.REGISTRATION_NO ? h`<dt>Registration No.</dt><dd>${CONFIG.REGISTRATION_NO}</dd>` : ""}<dt>Website</dt><dd><a href="${siteLink().url}" target="_blank" rel="noopener">${siteLink().text}</a></dd><dt>Office hours</dt><dd>Mon – Sat, 10:00 AM – 5:00 PM</dd></dl>
+    ${socialLinks("modal-social")}
     <div class="divider"></div><p class="muted small">Members can raise a support request from My FPAA for membership, payment, profile or scheme queries — every request gets a ticket number and a tracked reply.</p>`,
   foot: h`<button class="btn btn-ghost" data-action="modal-close">Close</button><button class="btn btn-primary" data-action="support-new">${icon("support")}New support request</button>`
 });
@@ -2101,7 +2112,7 @@ const Certificates = {
     const vparts = c.measureText("Verify: " + verify).width > 330 ? ["Verify at", verify] : ["Verify: " + verify];
     vparts.forEach((t, n) => c.fillText(t, 768, 906 + n * 13));
     // Footer: official email and website (from supabase-config.js)
-    const site = (CONFIG.WEBSITE || publicBaseUrl()).replace(/^https?:\/\//, "").replace(/\/index\.html.*$/, "").replace(/\/$/, "");
+    const site = siteLink().text;
     const fit = (t, max, px) => { let z = px; c.font = `${z}px ${serif}`; while (c.measureText(t).width > max && z > 11) { z -= 0.5; c.font = `${z}px ${serif}`; } };
     c.textAlign = "left"; c.fillStyle = "#0F2744";
     if (CONFIG.CONTACT_EMAIL) { fit(CONFIG.CONTACT_EMAIL, 318, 20); c.fillText(CONFIG.CONTACT_EMAIL, 417, 985); }
