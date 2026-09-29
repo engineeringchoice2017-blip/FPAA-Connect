@@ -16,7 +16,7 @@
 
 const CONFIG = Object.assign({
   SUPABASE_URL: "", SUPABASE_ANON_KEY: "", LOGO_URL: "assets/fpaa-logo.png",
-  PUBLIC_SITE_URL: "", CONTACT_EMAIL: "", CONTACT_PHONE: "", CONTACT_ADDRESS: "",
+  PUBLIC_SITE_URL: "", CONTACT_EMAIL: "", CONTACT_PHONE: "", CONTACT_ADDRESS: "", REGISTRATION_NO: "", WEBSITE: "",
   MEMORY_DRIVE_FOLDERS: []
 }, window.FPAA_CONFIG || {});
 
@@ -1495,7 +1495,7 @@ const Nav = {
           <button data-action="footer-contact">Contact</button><button data-action="go" data-to="#notices">Notices</button>
           <button data-action="footer-privacy">Privacy</button><button data-action="footer-terms">Terms</button>
         </nav></div>
-      <div class="ft-copy"><span>© ${new Date().getFullYear()} Falakata Polytechnic Alumni Association · ESTD 2024</span><span>${API.mode === "demo" ? "Demo mode — sample data only" : "Official FPAA Connect 2.0 platform"}</span></div>`);
+      <div class="ft-copy"><span>© ${new Date().getFullYear()} Falakata Polytechnic Alumni Association · ESTD 2024${CONFIG.REGISTRATION_NO ? ` · Reg. No. ${CONFIG.REGISTRATION_NO}` : ""}</span><span>${API.mode === "demo" ? "Demo mode — sample data only" : "Official FPAA Connect 2.0 platform"}</span></div>`);
   },
   all() { this.renderSidebar(); this.renderTopbar(); this.renderFooter(); }
 };
@@ -1508,7 +1508,7 @@ Actions["modal-close"] = () => Modal.close();
 Actions["logout"] = async () => { if (await confirmDialog({ title: "Log out of FPAA Connect 2.0?", message: "You will need to sign in again to access member services.", confirmText: "Log out" })) Auth.logout(); };
 Actions["footer-contact"] = () => Modal.open({
   title: "Contact FPAA", eyebrow: "Falakata Polytechnic Alumni Association",
-  body: h`<dl class="kv"><dt>Email</dt><dd>${CONFIG.CONTACT_EMAIL || "—"}</dd><dt>Phone</dt><dd>${CONFIG.CONTACT_PHONE || "—"}</dd><dt>Address</dt><dd>${CONFIG.CONTACT_ADDRESS || "—"}</dd><dt>Office hours</dt><dd>Mon – Sat, 10:00 AM – 5:00 PM</dd></dl>
+  body: h`<dl class="kv"><dt>Email</dt><dd>${CONFIG.CONTACT_EMAIL ? h`<a href="mailto:${CONFIG.CONTACT_EMAIL}">${CONFIG.CONTACT_EMAIL}</a>` : "—"}</dd>${CONFIG.CONTACT_PHONE ? h`<dt>Phone</dt><dd>${CONFIG.CONTACT_PHONE}</dd>` : ""}<dt>Address</dt><dd>${CONFIG.CONTACT_ADDRESS || "—"}</dd>${CONFIG.REGISTRATION_NO ? h`<dt>Registration No.</dt><dd>${CONFIG.REGISTRATION_NO}</dd>` : ""}<dt>Office hours</dt><dd>Mon – Sat, 10:00 AM – 5:00 PM</dd></dl>
     <div class="divider"></div><p class="muted small">Members can raise a support request from My FPAA for membership, payment, profile or scheme queries — every request gets a ticket number and a tracked reply.</p>`,
   foot: h`<button class="btn btn-ghost" data-action="modal-close">Close</button><button class="btn btn-primary" data-action="support-new">${icon("support")}New support request</button>`
 });
@@ -1715,6 +1715,7 @@ const Home = {
         ${em ? h`<a class="ct-row" href="mailto:${em}"><span class="ico-tile soft">${icon("mail", "ico ico-sm")}</span><span><small>Email</small><b class="break">${em}</b></span></a>` : ""}
         <div class="ct-row ct-wide"><span class="ico-tile soft">${icon("pin", "ico ico-sm")}</span><span><small>Office</small><b>${CONFIG.CONTACT_ADDRESS || "Falakata Polytechnic, Falakata"}</b></span></div>
         <div class="ct-row"><span class="ico-tile soft">${icon("clock", "ico ico-sm")}</span><span><small>Office hours</small><b>Mon – Sat, 10 AM – 5 PM</b></span></div>
+        ${CONFIG.REGISTRATION_NO ? h`<div class="ct-row"><span class="ico-tile soft">${icon("shield", "ico ico-sm")}</span><span><small>Registration No.</small><b>${CONFIG.REGISTRATION_NO}</b></span></div>` : ""}
       </div>
       <button class="btn btn-primary btn-sm btn-block" data-action="support-new" style="margin-top:auto">${icon("support", "ico ico-sm")}Send a support request</button>
     </aside>`;
@@ -2093,6 +2094,12 @@ const Certificates = {
     c.fillStyle = "#8394AB"; c.font = "10.5px Arial, sans-serif";
     const vparts = c.measureText("Verify: " + verify).width > 330 ? ["Verify at", verify] : ["Verify: " + verify];
     vparts.forEach((t, n) => c.fillText(t, 768, 906 + n * 13));
+    // Footer: official email and website (from supabase-config.js)
+    const site = (CONFIG.WEBSITE || publicBaseUrl()).replace(/^https?:\/\//, "").replace(/\/index\.html.*$/, "").replace(/\/$/, "");
+    const fit = (t, max, px) => { let z = px; c.font = `${z}px ${serif}`; while (c.measureText(t).width > max && z > 11) { z -= 0.5; c.font = `${z}px ${serif}`; } };
+    c.textAlign = "left"; c.fillStyle = "#0F2744";
+    if (CONFIG.CONTACT_EMAIL) { fit(CONFIG.CONTACT_EMAIL, 318, 20); c.fillText(CONFIG.CONTACT_EMAIL, 417, 985); }
+    if (site) { fit(site, 300, 20); c.fillText(site, 905, 985); }
     try {
       await loadPdfLibs();
       const pdf = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: [297, 198], compress: true });
@@ -2868,8 +2875,8 @@ Views.about = () => {
   else if (tab === "values") body = h`<h2>Core Values</h2><div class="pillar-grid">${[["shield", "Integrity", "Transparent finances, verified payments and an audit trail for every administrative action."], ["users", "Inclusion", "Every department, every batch, every alumnus — equal voice and equal access."], ["handshake", "Service", "We give our time, skills and resources to students and society."], ["award", "Excellence", "We celebrate merit and support one another to achieve more."], ["lock", "Privacy", "Member data is protected; contact details are never exposed publicly."], ["heart", "Gratitude", "We remember the institution and teachers who shaped us."]].map((v) => h`<div class="pillar"><span class="ico-tile soft">${icon(v[0])}</span><h4>${v[1]}</h4><p>${v[2]}</p></div>`)}</div>`;
   else body = h`<h2>Our Commitment</h2><p>FPAA commits to its members, to Falakata Polytechnic and to the wider community:</p>
     <ul class="sch-list">${["Every membership fee and donation is verified and reported transparently in finance reports.", "Every scholarship decision follows published eligibility, criteria and review by the Scheme Review Committee.", "Every job posting is reviewed by the Career Cell before it reaches members.", "Every member's personal information stays private and is used only for association work.", "Every support request receives a ticket number and a tracked reply."].map((c) => h`<li>${icon("check")}<span>${c}</span></li>`)}</ul>
-    <div class="glass card" style="margin-top:18px;box-shadow:none"><div class="row" style="gap:14px"><span class="ico-tile gold">${icon("mail")}</span><div class="grow"><b>Contact FPAA</b><div class="small muted">${CONFIG.CONTACT_EMAIL} · ${CONFIG.CONTACT_PHONE}</div><div class="small muted">${CONFIG.CONTACT_ADDRESS}</div></div><button class="btn btn-ghost btn-sm" data-action="footer-contact">Contact details</button></div></div>`;
-  return h`${pageHead({ eyebrow: "About FPAA", title: "ABOUT FPAA", sub: "Falakata Polytechnic Alumni Association — ESTD 2024." })}
+    <div class="glass card" style="margin-top:18px;box-shadow:none"><div class="row" style="gap:14px"><span class="ico-tile gold">${icon("mail")}</span><div class="grow"><b>Contact FPAA</b><div class="small muted">${[CONFIG.CONTACT_EMAIL, CONFIG.CONTACT_PHONE].filter(Boolean).join(" · ")}</div><div class="small muted">${CONFIG.CONTACT_ADDRESS}</div>${CONFIG.REGISTRATION_NO ? h`<div class="small muted">Registration No. ${CONFIG.REGISTRATION_NO}</div>` : ""}</div><button class="btn btn-ghost btn-sm" data-action="footer-contact">Contact details</button></div></div>`;
+  return h`${pageHead({ eyebrow: "About FPAA", title: "ABOUT FPAA", sub: `Falakata Polytechnic Alumni Association — ESTD 2024${CONFIG.REGISTRATION_NO ? ` · Reg. No. ${CONFIG.REGISTRATION_NO}` : ""}.` })}
     <section class="glass about-hero reveal"><div><span class="eyebrow">${icon("sparkles", "ico ico-sm")} Falakata Polytechnic · Alipurduar, West Bengal</span><h1 style="margin:8px 0 0">Falakata Polytechnic Alumni Association (FPAA)</h1>
       <p class="quote">“Connecting the Past. Empowering the Present. Building the Future.”</p>
       <div class="btn-group"><a class="btn btn-primary" href="#membership">${icon("idcard")}Become a member</a><a class="btn btn-ghost" href="#scheme">${icon("school")}Alumni Sponsored Scheme</a></div></div>

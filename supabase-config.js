@@ -24,10 +24,14 @@ window.FPAA_CONFIG = {
   // Leave empty to use the current page address.
   PUBLIC_SITE_URL: "",
 
-  // Contact details shown in the footer / About page
-  CONTACT_EMAIL: "fpaa.connect@example.org",
-  CONTACT_PHONE: "+91 00000 00000",
-  CONTACT_ADDRESS: "Falakata Polytechnic, Polytechnic College Road, Falakata, Alipurduar, West Bengal 735211",
+  // Official details shown in the footer, About page, Home contact panel and certificate
+  // (from the FPAA rule books). Leave CONTACT_PHONE empty to hide the phone row.
+  CONTACT_EMAIL: "falakatapolytechnicalumni@gmail.com",
+  CONTACT_PHONE: "",
+  CONTACT_ADDRESS: "Baganbari, Falakata, Dist - Alipurduar, West Bengal – 735211",
+  REGISTRATION_NO: "S0058184 of 2025-26",
+  // Website printed on the certificate. Leave empty to use the address the app is opened from.
+  WEBSITE: "",
 
   // Memories — photo albums kept on Google Drive (no storage used by the app).
   // Each folder must be shared as "Anyone with the link can view".
