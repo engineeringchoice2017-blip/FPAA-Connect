@@ -1184,3 +1184,11 @@ a.ct-row:hover { text-decoration: none; box-shadow: var(--shadow-soft); }
 .site-footer .ft-social .social-btn:hover { background: rgba(255, 255, 255, .2); }
 .site-footer .ft-social .social-btn .ico { color: #fff; }
 @media (max-width: 720px) { .site-footer .ft-social { margin-left: 0; } }
+
+/* ===================== 35. Community-only chat ===================== */
+.chat-window.community-only { grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 641px) { .chat-window.community-only { width: min(620px, calc(100vw - 44px)); } }
+.chat-window.community-only .chat-side { display: none !important; }
+.chat-window.community-only .chat-main { display: flex !important; }
+.chat-window.community-only .chat-back { display: none !important; }
+.msg .mb .from small { display: block; font-size: .7rem; font-weight: 600; color: var(--muted); letter-spacing: .01em; margin-top: 1px; }

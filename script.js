@@ -1271,7 +1271,8 @@ const LoginPage = {
     document.addEventListener("input", (e) => { if (e.target.closest("#signupForm") && ["full_name", "mobile"].includes(e.target.name)) this.updateKeyPreview(); });
   },
   next() { const n = new URLSearchParams(location.search).get("next"); return n && /^[a-z-]+(\/[a-z-]+)?$/.test(n) ? n : null; },
-  redirect() { const n = this.next(); location.href = "index.html#" + (n || (isAdmin() ? "admin" : "my-fpaa")); },
+  /* Sign-in lands on the Dashboard (Home); a new sign-up lands on My FPAA. A ?next= page (e.g. a protected link) wins. */
+  redirect(fallback = "home") { const n = this.next(); location.href = "index.html#" + (n || fallback); },
   demoBox() {
     if (API.mode !== "demo" || this.view !== "signin") return "";
     const acc = [["member@fpaa.in", "Member@123", "Alumni Member"], ["newuser@fpaa.in", "Welcome@123", "New user (unlinked)"], ["admin@fpaa.in", "Admin@123", "Super Admin"], ["registration@fpaa.in", "Admin@123", "Registration"], ["finance@fpaa.in", "Admin@123", "Finance"], ["content@fpaa.in", "Admin@123", "Content Admin"], ["committee@fpaa.in", "Admin@123", "Committee"]];
@@ -1346,7 +1347,7 @@ const LoginPage = {
     const b = e.target.closest("[data-action]"); if (!b) return;
     const a = b.dataset.action;
     if (a === "login-view") { this.view = b.dataset.view; this.render(); const f = $("#loginCard input:not([type=checkbox])"); if (f && !f.value) f.focus(); }
-    if (a === "welcome-continue") this.redirect();
+    if (a === "welcome-continue") this.redirect("my-fpaa");
     if (a === "demo-fill") {
       if (this.view !== "signin") { this.view = "signin"; this.render(); }
       $('#pwForm [name="email"]').value = b.dataset.email; $('#pwForm [name="password"]').value = b.dataset.pw;
@@ -2366,7 +2367,7 @@ Actions["member-view"] = (el) => {
       <dl class="kv"><dt>Membership No.</dt><dd class="mono">${m.membership_no}</dd><dt>Department</dt><dd>${m.department}</dd><dt>Admission / Passing</dt><dd>${m.admission_year} / ${m.passing_year}</dd><dt>Current Profession</dt><dd>${m.profession}</dd><dt>Company / Organization</dt><dd>${m.company || "—"}</dd><dt>Location</dt><dd>${m.city}, ${m.state}</dd>
         <dt>Mobile</dt><dd>${full ? m.mobile : maskMobile(m.mobile)}</dd><dt>Email</dt><dd>${full ? m.email : maskEmail(m.email)}</dd></dl>
       <div class="privacy-note">${icon("lock", "ico ico-sm")} ${full ? "You can see full contact details because of your " + ROLES[S.profile.role] + " role. Do not share them outside FPAA work." : "Contact details are masked to protect member privacy. Use community chat to reach this member."}</div>`,
-    foot: h`${!isMe && m.status === "Active" ? h`<button class="btn btn-primary" data-action="chat-dm" data-id="${m.id}">${icon("chat")}Message</button>` : ""}<button class="btn btn-ghost" data-action="modal-close">Close</button>`
+    foot: h`${!isMe && m.status === "Active" ? h`<button class="btn btn-primary" data-action="chat-open">${icon("chat")}Community Chat</button>` : ""}<button class="btn btn-ghost" data-action="modal-close">Close</button>`
   });
 };
 /* =====================================================================
@@ -2910,6 +2911,13 @@ const Chat = {
   simCount: 0,
   me() { return myChatId(); },
   memberName(id) { const m = API.get("members", id); if (m) return m.full_name; const p = API.get("profiles", id); return p ? p.full_name : "FPAA Member"; },
+  /* "Name · Department · Batch 2017" — from the member record, falling back to the stored sender name. */
+  senderLabel(msg) {
+    const m = API.get("members", msg.sender_id) || (() => { const p = API.get("profiles", msg.sender_id); return p && p.member_id ? API.get("members", p.member_id) : null; })();
+    const name = (m && m.full_name) || msg.sender_name || "FPAA Member";
+    const extra = m ? [m.department, m.passing_year ? `Batch ${m.passing_year}` : ""].filter(Boolean).join(" · ") : "";
+    return { name, extra };
+  },
   memberPhoto(id) { const m = API.get("members", id); return m ? m.photo : null; },
   presence(id) {
     if (id === this.me()) return "online";
@@ -2922,8 +2930,8 @@ const Chat = {
   readBy(msgId, userId) { return API.all("chat_read_receipts").some((r) => r.message_id === msgId && r.user_id === userId); },
   unread(conv) { const me = this.me(); return this.messages(conv).filter((m) => m.sender_id !== me && !this.readBy(m.id, me)).length; },
   conversations() {
-    const me = this.me(); const ids = uniq(API.all("member_chat_messages").map((m) => m.conversation_id)).filter((c) => c === "community" || (c.startsWith("dm:") && c.split(":").includes(me)));
-    if (!ids.includes("community")) ids.unshift("community");
+    // Community chat only — personal (one-to-one) chats are not offered.
+    const ids = ["community"];
     return ids.map((id) => { const msgs = this.messages(id); return { id, last: msgs[msgs.length - 1], unread: this.unread(id) }; })
       .sort((a, b) => (b.last ? b.last.created_at : "").localeCompare(a.last ? a.last.created_at : ""));
   },
@@ -2937,7 +2945,7 @@ const Chat = {
   },
   open(conv) {
     if (!hasMemberAccess()) { S.ui.accessMsg = { module: "Community Chat", reason: isSignedIn() ? "membership" : "signin" }; Router.go("#my-fpaa"); return; }
-    if (conv) S.chat.conv = conv;
+    S.chat.conv = "community";
     document.body.classList.add("chat-open"); $("#chatWindow").setAttribute("aria-hidden", "false");
     if (conv && window.innerWidth <= 860) $("#chatWindow").classList.add("show-conv");
     this.render(); this.markRead(S.chat.conv);
@@ -2974,25 +2982,21 @@ const Chat = {
       const mine = m.sender_id === me;
       let ticks = "";
       if (mine) { const others = API.all("chat_read_receipts").filter((r) => r.message_id === m.id && r.user_id !== me); const read = others.length > 0; ticks = h`<svg class="ticks ${read ? "read" : ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-label="${read ? "Read" : "Delivered"}">${raw(ICON_PATHS.checks)}</svg>`; }
-      out.push(h`<div class="msg ${mine ? "me" : ""}"><div class="mb">${!mine && conv === "community" ? h`<span class="from">${m.sender_name}</span>` : ""}${m.body}</div><div class="mt">${fmtTime(m.created_at)}${ticks}</div></div>`);
+      out.push(h`<div class="msg ${mine ? "me" : ""}"><div class="mb">${!mine ? (() => { const L = this.senderLabel(m); return h`<span class="from">${L.name}${L.extra ? h`<small>${L.extra}</small>` : ""}</span>`; })() : ""}${m.body}</div><div class="mt">${fmtTime(m.created_at)}${ticks}</div></div>`);
     });
     return out;
   },
   headHTML() {
     const conv = S.chat.conv;
-    if (conv === "community") { const online = API.all("members").filter((m) => m.status === "Active" && this.presence(m.id) === "online").length; return h`<button class="icon-btn chat-back" data-action="chat-back" aria-label="Back to conversations">${icon("arrowL")}</button><span class="ico-tile" style="width:40px;height:40px;border-radius:50%">${icon("users")}</span><div class="ch-who"><b>FPAA Community</b><span>${fmtNum(online)} members online</span></div><button class="icon-btn" data-action="chat-close" aria-label="Close chat">${icon("x")}</button>`; }
+    if (conv === "community") { const online = API.all("members").filter((m) => m.status === "Active" && this.presence(m.id) === "online").length; return h`<span class="ico-tile" style="width:40px;height:40px;border-radius:50%">${icon("users")}</span><div class="ch-who"><b>FPAA Community</b><span>${fmtNum(online)} members online</span></div><button class="icon-btn" data-action="chat-close" aria-label="Close chat">${icon("x")}</button>`; }
     const other = this.otherOf(conv); const name = this.memberName(other); const typing = S.chat.typing[conv];
     return h`<button class="icon-btn chat-back" data-action="chat-back" aria-label="Back to conversations">${icon("arrowL")}</button><span class="presence ${this.presence(other)}">${avatar(name, this.memberPhoto(other), "sm")}</span><div class="ch-who"><b>${name}</b><span class="${typing ? "typing" : ""}">${typing ? "typing…" : this.presence(other) === "online" ? "Online" : this.presence(other) === "away" ? "Away" : "Offline"}</span></div><button class="icon-btn" data-action="chat-close" aria-label="Close chat">${icon("x")}</button>`;
   },
   render() {
     const w = $("#chatWindow");
-    setHTML(w, h`<aside class="chat-side"><div class="chat-side-head"><div class="row-between"><h3>Messages</h3><button class="icon-btn" data-action="chat-close" aria-label="Close chat" style="width:36px;height:36px">${icon("x")}</button></div>
-        <div class="tabs"><button class="tab ${S.chat.tab !== "members" ? "active" : ""}" data-action="chat-tab" data-tab="chats">Chats</button><button class="tab ${S.chat.tab === "members" ? "active" : ""}" data-action="chat-tab" data-tab="members">Members</button></div>
-        <label class="input-icon">${icon("search")}<input class="input" id="chatSearch" type="search" placeholder="Search…" value="${S.chat.q}" aria-label="Search chats"></label></div>
-        <div class="chat-list" id="chatList">${this.sideList()}</div></aside>
-      <section class="chat-main"><header class="chat-head" id="chatHead">${this.headHTML()}</header><div class="chat-msgs" id="chatMsgs" aria-live="polite">${this.msgsHTML()}</div>
+    w.classList.add("community-only", "show-conv");
+    setHTML(w, h`<section class="chat-main"><header class="chat-head" id="chatHead">${this.headHTML()}</header><div class="chat-msgs" id="chatMsgs" aria-live="polite">${this.msgsHTML()}</div>
         <form class="chat-compose" data-submit="chat-send"><label class="sr-only" for="chatInput">Message</label><textarea class="textarea" id="chatInput" rows="1" maxlength="1000" placeholder="Write a message…"></textarea><button class="btn btn-primary" type="submit" aria-label="Send message">${icon("send")}</button></form></section>`);
-    const s = $("#chatSearch"); s.addEventListener("input", debounce(() => { S.chat.q = s.value; this.renderSide(); }, 150));
     const t = $("#chatInput"); t.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); t.form.requestSubmit(); } });
     t.addEventListener("input", () => { t.style.height = "auto"; t.style.height = Math.min(120, t.scrollHeight) + "px"; });
     this.scrollBottom();
@@ -3025,7 +3029,7 @@ Actions["chat-close"] = () => Chat.close();
 Actions["chat-tab"] = (el) => { S.chat.tab = el.dataset.tab; Chat.render(); };
 Actions["chat-conv"] = (el) => { S.chat.conv = el.dataset.conv; $("#chatWindow").classList.add("show-conv"); Chat.refreshConv(); Chat.markRead(S.chat.conv); };
 Actions["chat-back"] = () => { $("#chatWindow").classList.remove("show-conv"); Chat.renderSide(); };
-Actions["chat-dm"] = (el) => { Modal.close(); S.chat.tab = "chats"; Chat.open(Chat.convId(el.dataset.id)); $("#chatWindow").classList.add("show-conv"); };
+Actions["chat-dm"] = () => { Modal.close(); Chat.open("community"); }; // personal chat removed — opens the community chat
 Actions["chat-send"] = (form) => { const t = $("#chatInput"); const body = t.value.trim(); if (!body) { t.focus(); return; } if (body.length > 1000) return toast("error", "Message too long", "Keep messages under 1000 characters."); t.value = ""; t.style.height = "auto"; Chat.send(body); t.focus(); };
 
 /* =====================================================================
