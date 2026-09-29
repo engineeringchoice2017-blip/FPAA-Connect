@@ -559,6 +559,119 @@ const DONATION_PURPOSES = ["General Contribution", "Scholarship Fund", "Infrastr
 const SUPPORT_CATEGORIES = ["Membership", "Payment", "Profile Update", "Technical", "Scheme", "Other"];
 const SUPPORT_STATUSES = ["Open", "In Progress", "Resolved", "Closed"];
 const APP_STATUSES = ["Pending", "Under Review", "Approved", "Rejected", "Verified"];
+/* Alumni Sponsored Scheme definitions — content follows the official FPAA rule books (assets/docs/). */
+const SCHEME_DEFS = [
+  {
+    "id": "scheme-savitribai",
+    "code": "SFES",
+    "name": "Savitribai Fule Excellence Scholarship",
+    "audience": "Female students",
+    "icon": "female",
+    "tone": "f-rose",
+    "summary": "Merit-cum-means scholarship of ₹12,000 a year for meritorious, financially disadvantaged female diploma students of Falakata Polytechnic, from the 2nd year to the end of the 3rd year.",
+    "eligibility": [
+      "Female student of Falakata Polytechnic",
+      "Officially admitted to the 2nd year of a full-time regular Diploma in Engineering course at Falakata Polytechnic (Govt. of West Bengal)",
+      "Minimum aggregate of 75% (or equivalent grade) in the 1st and 2nd semester board examinations",
+      "Gross annual family income from all sources not more than ₹1,75,000",
+      "Must not be receiving any other major recurring Central or State Government scholarship at the same time"
+    ],
+    "criteria": [
+      "Primary screening of every application for completeness and authenticity by the Scholarship Cell",
+      "Eligible applicants ranked by the Selection Committee on a combined matrix of academic performance and family income",
+      "Provisional list of selected candidates published on the official portal, followed by a 10-day grievance redressal period",
+      "Final list of awardees published after document verification",
+      "3rd-year renewal is not automatic: minimum 70% aggregate in the 4th semester, at least 75% attendance across the 2nd year, and updated fee receipts and mark sheets",
+      "Scholarship is cancelled for false or forged documents, attendance below 75% or marks below 70%, discontinuing studies, suspension or expulsion, or accepting another overlapping major scholarship",
+      "The scheme is administered by the Scholarship Board, which interprets the rules, resolves disputes and audits fund use"
+    ],
+    "benefits": [
+      "₹12,000 per year, paid in two half-yearly instalments",
+      "Paid by Direct Benefit Transfer (DBT) into the student's verified, Aadhaar-linked bank account",
+      "Continues until the end of the 3rd year of the diploma (maximum two consecutive years), subject to the renewal criteria"
+    ],
+    "documents": [
+      "1st & 2nd semester mark sheets and Class 10 or 12 passing certificate",
+      "College admission letter and fee receipt for the current academic session",
+      "Income certificate from a competent government authority (Tehsildar, Circle Officer or equivalent)",
+      "Proof of identity and domicile (Aadhaar card, Voter ID or Passport)",
+      "Bank passbook copy or cancelled cheque in the student's name, linked with Aadhaar for DBT"
+    ],
+    "deadline": "Academic year 2026-27",
+    "seats": null
+  },
+  {
+    "id": "scheme-visvesvaraya",
+    "code": "SMVES",
+    "name": "Sir M. Visvesvaraya Excellence Scholarship",
+    "audience": "Male students",
+    "icon": "male",
+    "tone": "f-blue",
+    "summary": "Merit-cum-means scholarship of ₹12,000 a year for meritorious, financially disadvantaged male diploma students of Falakata Polytechnic, from the 2nd year to the end of the 3rd year.",
+    "eligibility": [
+      "Male student of Falakata Polytechnic",
+      "Officially admitted to the 2nd year of a full-time regular Diploma in Engineering course at Falakata Polytechnic (Govt. of West Bengal)",
+      "Minimum aggregate of 75% (or equivalent grade) in the 1st and 2nd semester board examinations",
+      "Gross annual family income from all sources not more than ₹1,75,000",
+      "Must not be receiving any other major recurring Central or State Government scholarship at the same time"
+    ],
+    "criteria": [
+      "Primary screening of every application for completeness and authenticity by the Scholarship Cell",
+      "Eligible applicants ranked by the Selection Committee on a combined matrix of academic performance and family income",
+      "Provisional list of selected candidates published on the official portal, followed by a 10-day grievance redressal period",
+      "Final list of awardees published after document verification",
+      "3rd-year renewal is not automatic: minimum 70% aggregate in the 4th semester, at least 75% attendance across the 2nd year, and updated fee receipts and mark sheets",
+      "Scholarship is cancelled for false or forged documents, attendance below 75% or marks below 70%, discontinuing studies, suspension or expulsion, or accepting another overlapping major scholarship",
+      "The scheme is administered by the Scholarship Board, which interprets the rules, resolves disputes and audits fund use"
+    ],
+    "benefits": [
+      "₹12,000 per year, paid in two half-yearly instalments",
+      "Paid by Direct Benefit Transfer (DBT) into the student's verified, Aadhaar-linked bank account",
+      "Continues until the end of the 3rd year of the diploma (maximum two consecutive years), subject to the renewal criteria"
+    ],
+    "documents": [
+      "1st & 2nd semester mark sheets and Class 10 or 12 passing certificate",
+      "College admission letter and fee receipt for the current academic session",
+      "Income certificate from a competent government authority (Tehsildar, Circle Officer or equivalent)",
+      "Proof of identity and domicile (Aadhaar card, Voter ID or Passport)",
+      "Bank passbook copy or cancelled cheque in the student's name, linked with Aadhaar for DBT"
+    ],
+    "deadline": "Academic year 2026-27",
+    "seats": null
+  },
+  {
+    "id": "scheme-kalam",
+    "code": "APJYSDP",
+    "name": "Dr. A.P.J. Abdul Kalam Youth Skill Development Programme",
+    "audience": "Falakata Polytechnic students",
+    "icon": "wrench",
+    "tone": "f-gold",
+    "summary": "“Evolutionary Growth” — a professional readiness training programme that bridges academic learning and industry expectations, building technical skills, workplace behaviour and professional ethics.",
+    "eligibility": [
+      "Students of Falakata Polytechnic enrolled in the Professional Readiness Training Programme",
+      "Minimum 75% attendance across all modules (technical, soft skills and project management)",
+      "Planned absence: written application to the Programme Coordinator at least 24 hours in advance; medical absence: valid certificate within 48 hours of return",
+      "Follow the code of conduct: join sessions 5 minutes early, keep camera on and microphone muted in online sessions, and maintain strict academic integrity"
+    ],
+    "criteria": [
+      "Continuous evaluation through practical assignments, project milestones, quizzes and peer evaluations",
+      "Late submissions lose 10% of marks per day for up to three days, after which they are not graded",
+      "Group projects need a documented division of work; peer review scores count towards individual grades",
+      "Certificate requires at least 85% cumulative attendance, a minimum 60% aggregate across assignments, capstone projects and milestones, a clean conduct record, and completion of all mock interviews and portfolio submissions",
+      "Grievances: module mentor → written grievance to the Programme Coordinator if unresolved within 48 hours → Academic and Professional Oversight Committee",
+      "Discipline: verbal warning for a first minor offence, written reprimand to the department head for a repeat, and suspension or expulsion without certificate for plagiarism, gross misconduct or harassment"
+    ],
+    "benefits": [
+      "Training in technical skills, soft skills and project management",
+      "Practical assignments, case discussions, simulated exercises and a capstone project",
+      "Pre-placement mock interviews and portfolio building",
+      "Official Professional Readiness Certificate on successful completion"
+    ],
+    "documents": [],
+    "deadline": "As notified by FPAA",
+    "seats": null
+  }
+];
 const SCHEME_STATUSES = ["Submitted", "Under Review", "Shortlisted", "Approved", "Rejected"];
 const DONATION_GOAL = 500000;
 
@@ -794,29 +907,7 @@ async function buildSeed() {
   nts.forEach((n, i) => db.notices.push({ id: uuid(), notice_no: `FPAA/NOT/2026/${String(40 - i).padStart(3, "0")}`, title: n[0], category: n[1], priority: n[2], date: isoDay(daysFromNow(n[3])), description: n[4], attachment_name: n[5], attachment_data: null, status: "Published", created_at: daysFromNow(n[3]).toISOString() }));
 
   // ---- Scheme definitions (stored in volunteer_opportunities for DB compatibility) ----
-  db.volunteer_opportunities = [
-    { id: "scheme-savitribai", code: "SFES", name: "Savitribai Fule Excellence Scholarship", audience: "Female students", icon: "female", tone: "f-rose",
-      summary: "Merit-cum-means scholarship honouring Savitribai Fule, supporting meritorious female diploma students of Falakata Polytechnic.",
-      eligibility: ["Female student currently enrolled in any diploma programme of Falakata Polytechnic", "Minimum 70% aggregate in the last semester examination", "Annual family income below ₹2,50,000", "No other full scholarship for the same academic year"],
-      criteria: ["Academic merit (60% weightage)", "Family income (25% weightage)", "Short statement of purpose and interview (15% weightage)", "Final selection by the FPAA Scheme Review Committee"],
-      benefits: ["₹10,000 scholarship per academic year", "Alumni mentor from the student's department", "Priority access to FPAA workshops and internships", "Certificate of Excellence at the Annual Alumni Meet"],
-      documents: ["Latest semester mark sheet", "Institute ID card", "Family income certificate", "Aadhaar card (masked copy)", "Bank passbook first page"],
-      deadline: "31 Oct 2026", seats: 10 },
-    { id: "scheme-visvesvaraya", code: "SMVES", name: "Sir M. Visvesvaraya Excellence Scholarship", audience: "Male students", icon: "male", tone: "f-blue",
-      summary: "Honouring Bharat Ratna Sir M. Visvesvaraya, this scholarship rewards meritorious male diploma students with financial need.",
-      eligibility: ["Male student currently enrolled in any diploma programme of Falakata Polytechnic", "Minimum 70% aggregate in the last semester examination", "Annual family income below ₹2,50,000", "Regular attendance of at least 75%"],
-      criteria: ["Academic merit (60% weightage)", "Family income (25% weightage)", "Project work / technical activity (15% weightage)", "Final selection by the FPAA Scheme Review Committee"],
-      benefits: ["₹10,000 scholarship per academic year", "Industry visit sponsored by FPAA", "Alumni mentor from the student's department", "Certificate of Excellence at the Annual Alumni Meet"],
-      documents: ["Latest semester mark sheet", "Institute ID card", "Family income certificate", "Attendance certificate", "Bank passbook first page"],
-      deadline: "31 Oct 2026", seats: 10 },
-    { id: "scheme-kalam", code: "APJYSDP", name: "Dr. A.P.J. Abdul Kalam Youth Skill Development Programme", audience: "Students & young alumni", icon: "wrench", tone: "f-gold",
-      summary: "Industry-oriented skill training, certification and placement support delivered by FPAA alumni and partner organisations.",
-      eligibility: ["Current students of Falakata Polytechnic (any semester)", "Alumni who passed out within the last 3 years", "Commitment to attend at least 80% of sessions"],
-      criteria: ["First-come, first-served within track capacity", "Preference to students without prior industry training", "Short aptitude test for advanced tracks"],
-      benefits: ["Free hands-on training tracks: PLC & Automation, AutoCAD & Revit, Embedded Systems, Food Safety (FSSAI)", "Certificate issued by FPAA", "Interview preparation and placement referrals through alumni network"],
-      documents: ["Institute ID card or diploma certificate", "Passport-size photograph", "Aadhaar card (masked copy)"],
-      deadline: "Rolling admissions", seats: 60 }
-  ];
+  db.volunteer_opportunities = SCHEME_DEFS.map((d) => Object.assign({}, d));
   const schApps = [
     ["scheme-savitribai", "Ankita Barman", "Female", "Civil", "5th", 82.4, 180000, "Under Review"], ["scheme-savitribai", "Shreya Pradhan", "Female", "Electronics", "3rd", 88.1, 120000, "Shortlisted"],
     ["scheme-savitribai", "Nandini Oraon", "Female", "Food Processing Technology", "5th", 76.5, 90000, "Submitted"], ["scheme-savitribai", "Sayani Dey", "Female", "Electrical", "3rd", 71.2, 240000, "Approved"],
@@ -922,7 +1013,8 @@ const API = {
       if (!S.db.committee_members.length) { seedCommittee(S.db); this.persist(); }
       let fixed = false; S.db.profiles.forEach((p) => { if (!p.mobile) { const m = p.member_id && S.db.members.find((x) => x.id === p.member_id); const mob = (m && m.mobile) || DEMO_MOBILES[p.email]; if (mob) { p.mobile = mob; fixed = true; } } if (/OTP/.test(p.auth_method || "")) { p.auth_method = "Email + Password"; fixed = true; } }); if (fixed) this.persist();
       const campus = S.db.homepage_gallery_feed.find((g) => /^Falakata Polytechnic campus/.test(g.caption || "") && String(g.image).startsWith("data:image/svg")); if (campus) { campus.image = "assets/campus.jpg"; this.persist(); }
-      let renamed = false; ["notices", "notifications", "dashboard_live_feed"].forEach((t) => S.db[t].forEach((row) => Object.keys(row).forEach((k) => { if (typeof row[k] === "string" && row[k].includes("Falakata Alumni Scheme")) { row[k] = row[k].replace(/Apply through the Falakata Alumni Scheme section\./g, "Contact the FPAA Scheme Committee for details.").replace(/Falakata Alumni Scheme/g, "Alumni Sponsored Scheme"); renamed = true; } }))); if (renamed) this.persist(); }
+      let renamed = false; ["notices", "notifications", "dashboard_live_feed"].forEach((t) => S.db[t].forEach((row) => Object.keys(row).forEach((k) => { if (typeof row[k] === "string" && row[k].includes("Falakata Alumni Scheme")) { row[k] = row[k].replace(/Apply through the Falakata Alumni Scheme section\./g, "Contact the FPAA Scheme Committee for details.").replace(/Falakata Alumni Scheme/g, "Alumni Sponsored Scheme"); renamed = true; } }))); if (renamed) this.persist();
+      let schFixed = false; SCHEME_DEFS.forEach((d) => { const row = S.db.volunteer_opportunities.find((x) => x.id === d.id); if (row && JSON.stringify(row.eligibility) !== JSON.stringify(d.eligibility)) { Object.assign(row, d); schFixed = true; } }); if (schFixed) this.persist(); }
     else { S.db = await buildSeed(); this.persist(); }
   },
   readLocal() { try { return JSON.parse(localStorage.getItem(DB_KEY) || "null"); } catch (e) { return null; } },
@@ -2606,7 +2698,7 @@ Views.scheme = (r) => {
     <div class="sch-grid">${Schemes.all().map((s, i) => h`<button class="sch-folder ${s.tone} reveal" style="animation-delay:${i * 90}ms" data-action="go" data-to="#scheme/${s.id}">
       <span class="row" style="justify-content:space-between;width:100%;align-items:flex-start">${Schemes.portrait(s)}<span class="chip slate">${icon("folder", "ico ico-sm")} ${s.code}</span></span>
       <h3>${s.name}</h3><span class="chip ${i === 0 ? "violet" : i === 1 ? "" : "gold"}" style="align-self:flex-start">${s.audience}</span><p>${s.summary}</p>
-      <span class="sf-foot"><span>${icon("calendar", "ico ico-sm")} ${s.deadline}</span><span>${s.seats} seats</span><span style="color:var(--indigo)">Open folder ${icon("chevR", "ico ico-sm")}</span></span></button>`)}</div>
+      <span class="sf-foot"><span>${icon("calendar", "ico ico-sm")} ${s.deadline}</span>${s.seats ? h`<span>${s.seats} seats</span>` : ""}<span style="color:var(--indigo)">Open folder ${icon("chevR", "ico ico-sm")}</span></span></button>`)}</div>
     <section class="section glass card reveal"><div class="card-head"><div><span class="eyebrow">${icon("file", "ico ico-sm")} Your applications</span><h3>My scheme applications</h3></div></div>
       ${mine.length ? h`<div class="table-wrap"><table class="data-table"><thead><tr><th>Application No.</th><th>Scheme</th><th>Submitted</th><th>Status</th><th>Remarks</th></tr></thead><tbody>${mine.map((a) => h`<tr><td class="mono t-strong">${a.application_no}</td><td>${(Schemes.all().find((s) => s.id === a.scheme_id) || {}).name}</td><td>${fmtDate(a.submitted_at)}</td><td>${statusPill(a.status)}</td><td class="small">${a.remarks || "—"}</td></tr>`)}</tbody></table></div>`
         : emptyState("No scheme applications yet.", "Applications you submit through the Scheme Committee will appear here.", "school")}</section>`;
@@ -2633,7 +2725,7 @@ Schemes.detail = (s) => {
   }
   return h`<button class="btn btn-ghost btn-sm reveal" data-action="go" data-to="#scheme" style="margin-bottom:14px">${icon("arrowL", "ico ico-sm")}All schemes</button>
     <section class="glass sch-detail-head reveal">${Schemes.portrait(s, "lg")}<div style="min-width:0"><span class="eyebrow">Alumni Sponsored Scheme · ${s.code}</span><h1 style="font-size:clamp(1.4rem,2.6vw,2rem);margin:6px 0">${s.name}</h1><p class="muted" style="margin:0">${s.summary}</p>
-      <div class="row" style="margin-top:10px"><span class="chip violet">${s.audience}</span><span class="chip">${icon("calendar", "ico ico-sm")} Last date: ${s.deadline}</span><span class="chip gold">${s.seats} seats</span></div>${doc ? h`<div class="btn-group" style="margin-top:12px"><button class="btn btn-primary btn-sm" data-action="scheme-tab" data-tab="rulebook">${icon("file", "ico ico-sm")}Read rule book</button><a class="btn btn-ghost btn-sm" href="${doc[0]}" download>${icon("download", "ico ico-sm")}Download PDF</a></div>` : ""}</div></section>
+      <div class="row" style="margin-top:10px"><span class="chip violet">${s.audience}</span><span class="chip">${icon("calendar", "ico ico-sm")} ${s.deadline}</span>${s.seats ? h`<span class="chip gold">${s.seats} seats</span>` : ""}</div>${doc ? h`<div class="btn-group" style="margin-top:12px"><button class="btn btn-primary btn-sm" data-action="scheme-tab" data-tab="rulebook">${icon("file", "ico ico-sm")}Read rule book</button><a class="btn btn-ghost btn-sm" href="${doc[0]}" download>${icon("download", "ico ico-sm")}Download PDF</a></div>` : ""}</div></section>
     <div class="section"><div class="tabs reveal" role="tablist">${tabs.map((t) => h`<button class="tab ${tab === t[0] ? "active" : ""}" role="tab" aria-selected="${String(tab === t[0])}" data-action="scheme-tab" data-tab="${t[0]}">${t[1]}</button>`)}</div></div>
     <section class="glass card reveal" style="margin-top:14px">${body}</section>`;
 };
@@ -3210,7 +3302,7 @@ Actions["adm-member-save"] = async (form) => {
 /* ---------- Scheme applications ---------- */
 AdminPanels.schemes = () => {
   const u = uiOf("aSch", { sort: "new" }); const schemes = Schemes.all();
-  const counts = schemes.map((s) => h`<div class="glass stat-card">${Schemes.portrait(s, "sm")}<div class="sc-body"><div class="sc-label">${s.code}</div><div class="sc-value">${Schemes.apps(s.id).length}</div><div class="sc-sub">${Schemes.apps(s.id).filter((a) => a.status === "Approved").length} approved · ${s.seats} seats</div></div></div>`);
+  const counts = schemes.map((s) => h`<div class="glass stat-card">${Schemes.portrait(s, "sm")}<div class="sc-body"><div class="sc-label">${s.code}</div><div class="sc-value">${Schemes.apps(s.id).length}</div><div class="sc-sub">${Schemes.apps(s.id).filter((a) => a.status === "Approved").length} approved${s.seats ? ` · ${s.seats} seats` : ""}</div></div></div>`);
   return h`<div class="grid grid-3" style="margin-bottom:18px">${counts}</div>
     ${admToolbar(h`${searchFilter("aSch.q", u.q, "Search applicant, application no.…")}${selectFilter("aSch.scheme", u.scheme, schemes.map((s) => ({ value: s.id, label: s.name })), "All schemes")}${selectFilter("aSch.status", u.status, SCHEME_STATUSES, "All statuses")}${sortSelect("aSch", u.sort, [["new", "Newest first"], ["pct", "Highest %"], ["name", "Name A–Z"]])}<button class="btn btn-ghost btn-sm" data-action="clear-filters" data-group="aSch">${icon("x", "ico ico-sm")}Clear</button><button class="btn btn-soft btn-sm" data-action="adm-export" data-what="schemes" data-fmt="csv">${icon("download", "ico ico-sm")}CSV</button>`)}
     ${Admin.listRender("aSch", AdminLists.schemes)}`;
