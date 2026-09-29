@@ -499,7 +499,7 @@ function printHTML(title, bodyHTML, css) {
   document.body.appendChild(frame);
   const doc = frame.contentWindow.document;
   doc.open();
-  doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Manrope:wght@700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"><style>${css}</style></head><body>${bodyHTML}</body></html>`);
+  doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Manrope:wght@700;800&family=Playfair+Display:wght@700&family=Great+Vibes&family=Libre+Baskerville:wght@400;700&display=swap" rel="stylesheet"><style>${css}</style></head><body>${bodyHTML}</body></html>`);
   doc.close();
   const go = () => { try { frame.contentWindow.focus(); frame.contentWindow.print(); } catch (e) { toast("error", "Print failed", "Your browser blocked printing. Please try again."); } };
   const imgs = Array.from(doc.images); let pending = imgs.length;
@@ -523,8 +523,9 @@ async function savePDF({ title, file, bodyHTML, css, w, h, pad = 0 }) {
   document.body.appendChild(frame);
   try {
     const doc = frame.contentWindow.document; doc.open();
-    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Manrope:wght@700;800&family=Playfair+Display:wght@700&display=swap" rel="stylesheet"><style>${css}html,body{margin:0;background:#fff}#pdfRoot{width:${w}mm;height:${h}mm;padding:${pad}mm;box-sizing:border-box;overflow:hidden;background:#fff}</style></head><body><div id="pdfRoot">${bodyHTML}</div></body></html>`);
+    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Manrope:wght@700;800&family=Playfair+Display:wght@700&family=Great+Vibes&family=Libre+Baskerville:wght@400;700&display=swap" rel="stylesheet"><style>${css}html,body{margin:0;background:#fff}#pdfRoot{width:${w}mm;height:${h}mm;padding:${pad}mm;box-sizing:border-box;overflow:hidden;background:#fff}</style></head><body><div id="pdfRoot">${bodyHTML}</div></body></html>`);
     doc.close();
+    if (doc.fonts) { try { await Promise.race([Promise.all(Array.from(doc.fonts).map((f) => f.load().catch(() => 0))), new Promise((r) => setTimeout(r, 4000))]); } catch (e) { /* ignore */ } }
     await Promise.race([Promise.all([...Array.from(doc.images).map((im) => im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r; })), doc.fonts ? doc.fonts.ready : 0]), new Promise((r) => setTimeout(r, 4000))]);
     await new Promise((r) => setTimeout(r, 150));
     const canvas = await window.html2canvas(doc.getElementById("pdfRoot"), { scale: 2, useCORS: true, backgroundColor: "#ffffff", width: wPx, height: hPx, windowWidth: wPx, windowHeight: hPx, logging: false });
@@ -2060,30 +2061,49 @@ Actions["app-view"] = (el) => {
 /* ---- Printable certificate & card ---- */
 const Certificates = {
   logo() { return absoluteUrl(CONFIG.LOGO_URL); },
-  certificate(m) {
+  /* Membership certificate on the official FPAA template (assets/certificate-template.jpg, 1536×1024 px → 297×198 mm).
+     Drawn straight onto a canvas so fonts and positions are exact on every device, then saved as a PDF. */
+  async certificate(m) {
     const verify = publicBaseUrl() + "#verify=" + m.membership_no;
-    const css = `@page{size:A4 landscape;margin:0}*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}body{margin:0;font-family:Inter,Arial,sans-serif;color:#0F2744}
-      .page{width:297mm;height:210mm;padding:10mm;background:linear-gradient(135deg,#F7FAFF,#EEF4FF)}
-      .frame{position:relative;height:100%;border:3px solid #D7A52B;border-radius:6px;padding:11mm 22mm;text-align:center;background:radial-gradient(circle at 50% 55%,rgba(59,130,246,.06),transparent 60%)}
-      .frame:before{content:"";position:absolute;left:1.6mm;top:1.6mm;right:1.6mm;bottom:1.6mm;border:1.5px solid #15365F;border-radius:4px;pointer-events:none}
-      .wm{position:absolute;left:50%;top:54%;width:110mm;transform:translate(-50%,-50%);opacity:.045}
-      .logo{width:25mm;height:25mm}.org{font:800 15pt/1.3 Manrope,Arial;letter-spacing:.14em;color:#15365F;margin-top:3mm}.est{font-size:9pt;line-height:1.5;margin-top:1mm;letter-spacing:.3em;color:#9C7414;font-weight:700}
-      h1{font:700 32pt/1.2 "Playfair Display",Georgia,serif;margin:4mm 0 0;color:#15365F}.sub{font-size:11pt;line-height:1.5;margin-top:2mm;color:#5B6B82;letter-spacing:.1em;text-transform:uppercase;padding-top:1mm}
-      .name{font:800 27pt/1.25 Manrope,Arial;margin:3mm 0 1mm;color:#0B2141;border-bottom:1.5px solid #D7A52B;display:inline-block;padding:0 10mm 3mm}
-      .body{font-size:12pt;line-height:1.7;max-width:210mm;margin:3mm auto 0;color:#29466B}
-      .meta{display:flex;justify-content:center;gap:12mm;margin-top:4mm;font-size:10pt}.meta b{display:block;font-size:12pt;line-height:1.4;color:#15365F}.meta span{color:#5B6B82;text-transform:uppercase;letter-spacing:.08em;font-size:8pt}
-      .sig{position:absolute;bottom:11mm;left:22mm;right:22mm;display:flex;justify-content:space-between;align-items:flex-end;font-size:10pt}.sig div{width:60mm;border-top:1px solid #15365F;padding-top:2mm;color:#29466B}
-      .sig div.seal{width:21mm;height:21mm;border-top:0;padding:0;border-radius:50%;background:radial-gradient(circle,#FFE7A3,#D7A52B 60%,#9C7414);display:grid;place-items:center;color:#3A2A05;font:800 8pt Arial;letter-spacing:.08em;box-shadow:0 0 0 2mm rgba(215,165,43,.25)}
-      .ver{position:absolute;bottom:5mm;left:0;right:0;font-size:7.5pt;color:#8394AB}`;
-    const html = `<div class="page"><div class="frame"><img class="wm" src="${esc(this.logo())}" alt=""><img class="logo" src="${esc(this.logo())}" alt="FPAA emblem">
-      <div class="org">FALAKATA POLYTECHNIC ALUMNI ASSOCIATION</div><div class="est">ESTD 2024 · FPAA CONNECT 2.0</div>
-      <h1>Certificate of Membership</h1><div class="sub">This is to certify that</div><div class="name">${esc(m.full_name)}</div>
-      <div class="body">an alumnus/alumna of the <b>${esc(m.department)}</b> department (Batch ${esc(m.admission_year)}–${esc(m.passing_year)}) of Falakata Polytechnic, is a registered member of the <b>Falakata Polytechnic Alumni Association</b> under the category <b>${esc(m.category)}</b>, and is entitled to all rights and privileges of membership.</div>
-      <div class="meta"><div><span>Membership No.</span><b>${esc(m.membership_no)}</b></div><div><span>Member Since</span><b>${esc(m.member_since)}</b></div><div><span>Valid Till</span><b>${esc(m.valid_till)}</b></div><div><span>Issued On</span><b>${esc(fmtDate(new Date()))}</b></div></div>
-      <div class="sig"><div>President<br><small>FPAA</small></div><div class="seal">FPAA<br>SEAL</div><div>General Secretary<br><small>FPAA</small></div></div>
-      <div class="ver">Verify this certificate at ${esc(verify)}</div></div></div>`;
+    const yr = (v) => /^\d{4}$/.test(String(v || ""));
+    const memYear = yr(m.member_since) && yr(m.valid_till) ? `${m.member_since} - ${m.valid_till}` : [m.member_since, m.valid_till].filter(Boolean).join(" - ");
+    const file = `FPAA-Certificate-${m.membership_no}.pdf`;
     audit("Downloaded certificate", m.membership_no);
-    return downloadOrPrint({ title: "FPAA Membership Certificate — " + m.membership_no, file: `FPAA-Certificate-${m.membership_no}.pdf`, bodyHTML: html, css, w: 297, h: 210 });
+    toast("info", "Preparing certificate…", "Your download will start in a moment.");
+    const loadImg = (src) => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error("Could not load the certificate template.")); im.src = src; });
+    const faces = [new FontFace("FPAA Script", `url("${absoluteUrl("assets/fonts/GreatVibes-Regular.ttf")}")`), new FontFace("FPAA Serif", `url("${absoluteUrl("assets/fonts/LibreBaskerville.ttf")}")`, { weight: "400 700" })];
+    await Promise.all(faces.map((f) => f.load().then((ff) => document.fonts.add(ff)).catch(() => 0)));
+    const bg = await loadImg(absoluteUrl("assets/certificate-template.jpg"));
+    const k = 2, cv = document.createElement("canvas"); cv.width = 1536 * k; cv.height = 1024 * k;
+    const c = cv.getContext("2d"); c.scale(k, k); c.drawImage(bg, 0, 0, 1536, 1024); c.textBaseline = "alphabetic";
+    const serif = '"FPAA Serif", "Libre Baskerville", Georgia, "Times New Roman", serif';
+    // Name — script, centred on the gold line
+    let size = 92; c.fillStyle = "#A87814"; c.textAlign = "center";
+    const setName = () => (c.font = `${size}px "FPAA Script", "Great Vibes", "Brush Script MT", cursive`);
+    setName(); while (c.measureText(m.full_name).width > 800 && size > 40) { size -= 2; setName(); }
+    c.fillText(m.full_name, 768, 503);
+    // Department / Pass out year / Membership year
+    c.textAlign = "left"; c.fillStyle = "#0F2744"; c.font = `21px ${serif}`;
+    [[m.department, 689], [m.passing_year, 721], [memYear, 754]].forEach(([t, y]) => c.fillText(String(t || ""), 445, y));
+    // Membership number + verification, between the two signatures
+    c.textAlign = "center";
+    c.fillStyle = "#6B7A90"; c.font = `12px ${serif}`; c.fillText("M E M B E R S H I P   N O .", 768, 832);
+    c.fillStyle = "#0F2744"; c.font = `bold 23px ${serif}`; c.fillText(m.membership_no, 768, 862);
+    c.fillStyle = "#29466B"; c.font = `14px ${serif}`; c.fillText("Issued on " + fmtDate(new Date()), 768, 886);
+    c.fillStyle = "#8394AB"; c.font = "10.5px Arial, sans-serif";
+    const vparts = c.measureText("Verify: " + verify).width > 330 ? ["Verify at", verify] : ["Verify: " + verify];
+    vparts.forEach((t, n) => c.fillText(t, 768, 906 + n * 13));
+    try {
+      await loadPdfLibs();
+      const pdf = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: [297, 198], compress: true });
+      pdf.addImage(cv.toDataURL("image/jpeg", 0.93), "JPEG", 0, 0, 297, 198);
+      pdf.setProperties({ title: "FPAA Membership Certificate — " + m.membership_no });
+      pdf.save(file); toast("success", "Certificate downloaded", file);
+    } catch (e) {
+      console.error(e); // fall back to a PNG image of the certificate
+      const a = document.createElement("a"); a.href = cv.toDataURL("image/png"); a.download = file.replace(/\.pdf$/, ".png"); document.body.appendChild(a); a.click(); a.remove();
+      toast("success", "Certificate downloaded as an image", a.download);
+    }
   },
   card(m) {
     const verify = publicBaseUrl() + "#verify=" + m.membership_no;
